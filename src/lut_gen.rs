@@ -1,4 +1,5 @@
 //! Code generator for lookup tables.
+#![cfg_attr(not(test), allow(dead_code))]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -6,29 +7,34 @@ use std::hash::Hash;
 
 use itertools::Itertools;
 
+use crate::HYPERCUBE_TWISTS;
+use crate::TwistData;
+use crate::Vec4;
+
 /// Lookup table for permuting pieces.
 pub struct PermutationLut {
-    /// For each action, for each point: the new point.
-    table: Vec<Vec<usize>>,
+    piece_count: usize,
+    /// For each twist, for each point: the new point.
+    table: Vec<Option<Vec<usize>>>,
 }
 
 impl PermutationLut {
-    /// Generates a lookup table that permutes points `P` (typically pieces)
-    /// according to an action `A` (typically twists).
-    pub fn new<A: Copy, P: Copy + Eq + Hash>(
-        actions: &[A],
-        points: &[P],
-        act: impl Fn(A, P) -> P,
-    ) -> Self {
-        let point_to_index: HashMap<P, usize> =
-            points.iter().enumerate().map(|(i, &p)| (p, i)).collect();
+    /// Generates a lookup table that permutes pieces according to each twist.
+    pub fn new(pieces: &[Vec4]) -> Self {
+        let point_to_index: HashMap<Vec4, usize> =
+            pieces.iter().enumerate().map(|(i, &p)| (p, i)).collect();
         Self {
-            table: actions
+            piece_count: pieces.len(),
+            table: HYPERCUBE_TWISTS
                 .iter()
-                .map(|&a| {
-                    points
+                .map(|&t| {
+                    pieces
                         .iter()
-                        .map(|&p| *point_to_index.get(&act(a, p)).expect("missing point"))
+                        .map(|&p| {
+                            point_to_index
+                                .get(&if t.affects(p) { t.rot * p } else { p })
+                                .copied()
+                        })
                         .collect()
                 })
                 .collect(),
@@ -42,11 +48,10 @@ impl PermutationLut {
         bit_offset: usize,
         bits_per_element: usize,
         state_var: &str,
-        action_var: &str,
+        twist_var: &str,
     ) -> String {
-        let point_count = self.table[0].len();
         assert!(
-            point_count * bits_per_element + bit_offset <= int_width,
+            self.piece_count * bits_per_element + bit_offset <= int_width,
             "integer is not wide enough",
         );
 
@@ -54,22 +59,24 @@ impl PermutationLut {
             |p| ((1_u64 << bits_per_element) - 1) << (p * bits_per_element + bit_offset);
 
         let mut s = String::new();
-        s += &format!("apply_permutation_lut!(u{int_width}, {state_var}, {action_var}, [\n");
-        for (i, row) in self.table.iter().enumerate() {
-            let mut delta_masks = BTreeMap::<usize, u64>::new();
-            for (src, &dst) in row.iter().enumerate() {
-                let mask = element_mask(src);
-                let src = src * bits_per_element + bit_offset;
-                let dst = dst * bits_per_element + bit_offset;
-                let delta = dst.wrapping_sub(src) % int_width;
-                *delta_masks.entry(delta).or_default() |= mask;
+        s += &format!("apply_permutation_lut!(u{int_width}, {state_var}, {twist_var}, [\n");
+        for (i, opt_row) in self.table.iter().enumerate() {
+            if let Some(row) = opt_row {
+                let mut delta_masks = BTreeMap::<usize, u64>::new();
+                for (src, &dst) in row.iter().enumerate() {
+                    let mask = element_mask(src);
+                    let src = src * bits_per_element + bit_offset;
+                    let dst = dst * bits_per_element + bit_offset;
+                    let delta = dst.wrapping_sub(src) % int_width;
+                    *delta_masks.entry(delta).or_default() |= mask;
+                }
+                s += &format!("    {i} => [");
+                s += &delta_masks
+                    .iter()
+                    .map(|(delta, mask)| format!("(&0x{mask:X}<<{delta})"))
+                    .join("|");
+                s += "],\n";
             }
-            s += &format!("    {i} => [");
-            s += &delta_masks
-                .iter()
-                .map(|(delta, mask)| format!("(&0x{mask:X}<<{delta})"))
-                .join("|");
-            s += "],\n";
         }
         s += "])";
         s
@@ -84,19 +91,18 @@ pub struct OrientationLut {
 }
 
 impl OrientationLut {
-    /// Generates a lookup table that updates the orientation for each piece `P`
-    /// according to an action `A` (typically a twist).
+    /// Generates a lookup table that updates the orientation for each piece
+    /// according to a twist.
     pub fn new<A: Copy, P: Copy + Eq + Hash>(
-        actions: &[A],
-        points: &[P],
+        pieces: &[Vec4],
         orientation_count: usize,
-        act: impl Fn(A, P, usize) -> usize,
+        act: impl Fn(TwistData, Vec4, usize) -> usize,
     ) -> Self {
         Self {
-            table: actions
+            table: HYPERCUBE_TWISTS
                 .iter()
                 .map(|&a| {
-                    points
+                    pieces
                         .iter()
                         .map(|&p| (0..orientation_count).map(|o| act(a, p, o)).collect())
                         .collect()
@@ -114,7 +120,7 @@ impl OrientationLut {
         bit_offset: usize,
         bits_per_element: usize,
         state_var: &str,
-        action_var: &str,
+        twist_var: &str,
     ) -> String {
         let point_count = self.table[0].len();
         assert!(point_count * bits_per_element + bit_offset <= int_width);
@@ -171,7 +177,7 @@ impl OrientationLut {
             s += &format!("        [0x{m1:X}, 0x{ma:X}, 0x{mb:X}],\n");
         }
 
-        s += &format!("    ][{action_var}],\n");
+        s += &format!("    ][{twist_var}],\n");
         s += ")\n";
         s
     }

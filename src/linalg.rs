@@ -20,7 +20,7 @@ pub enum Axis {
 }
 
 impl Axis {
-    /// List of all 4 axes.
+    /// List of all 4 axes in canonical order.
     pub const ALL: [Axis; 4] = [X, Y, Z, W];
 
     /// Returns a unit vector on the axis.

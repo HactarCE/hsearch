@@ -106,10 +106,14 @@
 
 #[macro_use]
 mod lut;
+mod canonical;
 mod group;
 mod linalg;
 mod lut_gen;
 mod puzzle;
+mod search;
+mod stages;
+mod twist;
 mod util;
 
 pub use prelude::*;
@@ -118,10 +122,16 @@ pub use prelude::*;
 pub mod prelude {
     pub use crate::linalg::*;
     pub use crate::puzzle::*;
+    pub use crate::twist::*;
 }
 
 pub const SCRAMBLE_LEN: usize = 500;
 
 fn main() {
-    println!("Hello, world!");
+    for i in 0..1 {
+        let scramble = util::scramble(i);
+        println!("{}", util::twists_to_string(&scramble));
+        let sol = search::solve(scramble);
+        println!("{}", util::twists_to_string(&sol));
+    }
 }

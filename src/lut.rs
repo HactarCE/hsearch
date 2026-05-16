@@ -1,11 +1,10 @@
 macro_rules! apply_permutation_lut {
-    ($int_type:ty, $input:expr, $index:expr, [$($i:literal => [ $((& $mask:literal << $delta:literal))|* ]),* $(,)?]) => {
+    ($int_type:ty, $input:expr, $twist:expr, [$($i:literal => [ $((& $mask:literal << $delta:literal))|* ]),* $(,)?]) => {
         {
             let input: $int_type = $input;
-            let index: usize = $index;
-            match index {
+            match Twist::to_index($twist) {
                 $( $i => $( <$int_type>::rotate_left(input & $mask, $delta) )|* , )*
-                _ => panic!("permutation index out of range"),
+                _ => panic!("twist not allowed in this stage"),
             }
         }
     };

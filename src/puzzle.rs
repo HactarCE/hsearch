@@ -2,27 +2,14 @@
 
 use std::{collections::HashMap, fmt, sync::LazyLock};
 
+use itertools::Itertools;
+
 use crate::linalg::*;
 
-/// Right (X+)
-pub const R: Facet = Facet::pos(X);
-/// Left (X-)
-pub const L: Facet = Facet::neg(X);
-/// Up (Y+)
-pub const U: Facet = Facet::pos(Y);
-/// Down (Y-)
-pub const D: Facet = Facet::neg(Y);
-/// Front (Z+)
-pub const F: Facet = Facet::pos(Z);
-/// Back (Z-)
-pub const B: Facet = Facet::neg(Z);
-/// Out (W+)
-pub const O: Facet = Facet::pos(W);
-/// In (W-)
-pub const I: Facet = Facet::neg(W);
+pub use Facet::{B, D, F, I, L, O, R, U};
 
 /// List of all twists on a hypercube puzzle.
-pub static HYPERCUBE_TWISTS: LazyLock<Vec<Twist>> =
+pub static HYPERCUBE_TWISTS: LazyLock<Vec<TwistData>> =
     LazyLock::new(|| TWISTS_WITH_NAMES.iter().map(|(_, twist)| *twist).collect());
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -77,21 +64,24 @@ impl Sign {
 }
 
 /// Facet of the puzzle.
-///
-/// There are 8 facets:
-///
-/// - Right (X+)
-/// - Left (X-)
-/// - Up (Y+)
-/// - Down (Y-)
-/// - Front (Z+)
-/// - Back (Z-)
-/// - Out (W+)
-/// - In (W-)
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Facet {
-    pub axis: Axis,
-    pub sign: Sign,
+pub enum Facet {
+    /// Right (X+)
+    R = 0,
+    /// Left (X-)
+    L = 1,
+    /// Up (Y+)
+    U = 2,
+    /// Down (Y-)
+    D = 3,
+    /// Front (Z+)
+    F = 4,
+    /// Back (Z-)
+    B = 5,
+    /// Out (W+)
+    O = 6,
+    /// In (W-)
+    I = 7,
 }
 
 impl fmt::Debug for Facet {
@@ -110,38 +100,85 @@ impl TransformByMat4 for Facet {
     fn transform_by(&self, m: Mat4) -> Self {
         let v = m * self.vec4();
         let axis = v.unwrap_single_axis();
-        Self {
-            axis,
-            sign: Sign::from_i8(v[axis]),
-        }
+        Self::new(axis, Sign::from_i8(v[axis]))
     }
 }
 
 impl Facet {
+    /// List of all 4 axes in canonical order.
+    pub const ALL: [Facet; 8] = [R, L, U, D, F, B, O, I];
+
+    pub const fn new(axis: Axis, sign: Sign) -> Self {
+        match (axis, sign) {
+            (X, Sign::Pos) => R,
+            (X, Sign::Neg) => L,
+            (Y, Sign::Pos) => U,
+            (Y, Sign::Neg) => D,
+            (Z, Sign::Pos) => F,
+            (Z, Sign::Neg) => B,
+            (W, Sign::Pos) => O,
+            (W, Sign::Neg) => I,
+        }
+    }
+
+    /// Constructs a facet from a number in the range `0..8`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `i >= 8`.
+    pub fn from_u8(i: u8) -> Self {
+        match i {
+            0 => R,
+            1 => L,
+            2 => U,
+            3 => D,
+            4 => F,
+            5 => B,
+            6 => O,
+            7 => I,
+            _ => panic!("bad facet number"),
+        }
+    }
+
     /// Returns the positive facet on an axis.
     pub const fn pos(axis: Axis) -> Self {
-        let sign = Sign::Pos;
-        Self { axis, sign }
+        Self::new(axis, Sign::Pos)
     }
 
     /// Returns the negative facet on an axis.
     pub const fn neg(axis: Axis) -> Self {
-        let sign = Sign::Neg;
-        Self { axis, sign }
+        Self::new(axis, Sign::Neg)
+    }
+
+    /// Returns the axis of the facet.
+    pub fn axis(self) -> Axis {
+        match self {
+            R | L => X,
+            U | D => Y,
+            F | B => Z,
+            O | I => W,
+        }
+    }
+
+    /// Returns the sign of the facet.
+    pub fn sign(self) -> Sign {
+        match self {
+            R | U | F | O => Sign::Pos,
+            L | D | B | I => Sign::Neg,
+        }
     }
 
     /// Returns the name of the facet.
     pub const fn name(self) -> char {
-        let Self { axis, sign } = self;
-        match (axis, sign) {
-            (X, Sign::Pos) => 'R',
-            (X, Sign::Neg) => 'L',
-            (Y, Sign::Pos) => 'U',
-            (Y, Sign::Neg) => 'D',
-            (Z, Sign::Pos) => 'F',
-            (Z, Sign::Neg) => 'B',
-            (W, Sign::Pos) => 'O',
-            (W, Sign::Neg) => 'I',
+        match self {
+            R => 'R',
+            L => 'L',
+            U => 'U',
+            D => 'D',
+            F => 'F',
+            B => 'B',
+            O => 'O',
+            I => 'I',
         }
     }
 
@@ -162,25 +199,25 @@ impl Facet {
 
     /// Returns whether the given vector is in the region of the facet.
     pub fn has_vector(self, v: Vec4) -> bool {
-        v[self.axis] == self.sign as _
+        v[self.axis()] == self.sign() as _
     }
 
     /// Returns the normal vector of the facet.
     pub fn vec4(self) -> Vec4 {
-        self.axis.unit() * self.sign as _
+        self.axis().unit() * self.sign() as _
     }
 }
 
 /// Twist of an outer layer of the puzzle.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct Twist {
+pub struct TwistData {
     /// Facet to twist.
     pub facet: Facet,
     /// Rotation to apply to affected pieces.
     pub rot: Mat4,
 }
 
-impl TransformByMat4 for Twist {
+impl TransformByMat4 for TwistData {
     fn transform_by(&self, m: Mat4) -> Self {
         Self {
             facet: self.facet.transform_by(m),
@@ -189,7 +226,7 @@ impl TransformByMat4 for Twist {
     }
 }
 
-impl fmt::Display for Twist {
+impl fmt::Display for TwistData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match TWIST_TO_NAME.get(self) {
             Some((facets, multiplier)) => {
@@ -206,15 +243,15 @@ impl fmt::Display for Twist {
     }
 }
 
-impl Twist {
+impl TwistData {
     /// Constructs a twist.
     ///
     /// # Panics
     ///
     /// Panics if `rot` does not fix `facet`.
-    pub fn new(facet: Facet, rot: Mat4) -> Twist {
+    pub fn new(facet: Facet, rot: Mat4) -> TwistData {
         assert_eq!(facet.vec4(), rot * facet.vec4(), "rot does not fix facet");
-        Twist { facet, rot }
+        TwistData { facet, rot }
     }
 
     /// Returns whether the twist affects a piece given its current location.
@@ -223,7 +260,7 @@ impl Twist {
     }
 
     /// Returns a twist from its name.
-    pub fn from_notation(move_str: &str) -> Option<Twist> {
+    pub fn from_notation(move_str: &str) -> Option<TwistData> {
         let mut chars = move_str.chars().peekable();
 
         let mut facets_list = vec![];
@@ -268,8 +305,8 @@ impl Twist {
     }
 
     /// Returns the inverse of a twist.
-    pub fn inv(self) -> Twist {
-        Twist {
+    pub fn inv(self) -> TwistData {
+        TwistData {
             facet: self.facet,
             rot: self.rot.inv(),
         }
@@ -278,37 +315,54 @@ impl Twist {
 
 type TwistNameWithMultiplier = (Vec<Facet>, u8);
 
-static TWISTS_WITH_NAMES: LazyLock<Vec<(TwistNameWithMultiplier, Twist)>> = LazyLock::new(|| {
-    let rot_yx = Mat4::rot(Y, X);
-    let rot_xz = Mat4::rot(X, Z);
-    let init_twists = vec![
-        ((vec![I, F], 1), Twist::new(I, rot_yx)), // 90° ridge twist
-        ((vec![I, F], 2), Twist::new(I, rot_yx * rot_yx)), // 180° ridge twist
-        ((vec![I, U, R], 1), Twist::new(I, rot_yx * rot_xz * rot_xz)), // 180° edge twist
-        ((vec![I, U, F, R], 1), Twist::new(I, rot_yx * rot_xz)), // 120° corner twist
-    ];
-    let mut ret = crate::group::Group::hypercube_rotations().orbit_with(
-        init_twists,
-        |m, ((facets, multiplier), twist)| {
-            let transformed_facets = facets.iter().map(|f| f.transform_by(m)).collect();
-            ((transformed_facets, *multiplier), twist.transform_by(m))
-        },
-        |((_facets, _multiplier), twist)| *twist,
-    );
-    for ((facets, _), _) in &mut ret {
-        facets[1..].sort();
-    }
-    ret
-});
+static TWISTS_WITH_NAMES: LazyLock<Vec<(TwistNameWithMultiplier, TwistData)>> =
+    LazyLock::new(|| {
+        let rot_yx = Mat4::rot(Y, X);
+        let rot_xz = Mat4::rot(X, Z);
+        let init_twists = vec![
+            ((vec![I, F], 1), TwistData::new(I, rot_yx)), // 90° ridge twist
+            ((vec![I, F], 2), TwistData::new(I, rot_yx * rot_yx)), // 180° ridge twist
+            (
+                (vec![I, U, R], 1),
+                TwistData::new(I, rot_yx * rot_xz * rot_xz),
+            ), // 180° edge twist
+            ((vec![I, U, F, R], 1), TwistData::new(I, rot_yx * rot_xz)), // 120° corner twist
+        ];
+        let mut all_twists_unsorted = crate::group::Group::hypercube_rotations().orbit_with(
+            init_twists,
+            |m, ((facets, multiplier), twist)| {
+                let transformed_facets = facets.iter().map(|f| f.transform_by(m)).collect();
+                ((transformed_facets, *multiplier), twist.transform_by(m))
+            },
+            |((_facets, _multiplier), twist)| *twist,
+        );
+        for ((facets, _), _) in &mut all_twists_unsorted {
+            facets[1..].sort();
+        }
 
-static TWIST_TO_NAME: LazyLock<HashMap<Twist, TwistNameWithMultiplier>> = LazyLock::new(|| {
+        // Sort twists such that the lower 3 bits of a twist corresponds to its facet.
+        let mut twists_by_facet = all_twists_unsorted
+            .iter()
+            .cloned()
+            .into_group_map_by(|(_, twist_data)| twist_data.facet);
+        let all_twists_interleaved = Facet::ALL
+            .iter()
+            .cycle()
+            .map_while(|f| twists_by_facet.get_mut(f)?.pop())
+            .collect_vec();
+        assert_eq!(all_twists_interleaved.len(), all_twists_unsorted.len());
+
+        all_twists_interleaved
+    });
+
+static TWIST_TO_NAME: LazyLock<HashMap<TwistData, TwistNameWithMultiplier>> = LazyLock::new(|| {
     TWISTS_WITH_NAMES
         .iter()
         .map(|(name, twist)| (*twist, name.clone()))
         .collect()
 });
 
-static NAME_TO_TWIST: LazyLock<HashMap<Vec<Facet>, Twist>> = LazyLock::new(|| {
+static NAME_TO_TWIST: LazyLock<HashMap<Vec<Facet>, TwistData>> = LazyLock::new(|| {
     TWISTS_WITH_NAMES
         .iter()
         .filter(|((_facets, multiplier), _twist)| *multiplier == 1)
@@ -325,13 +379,25 @@ mod tests {
         assert_eq!(HYPERCUBE_TWISTS.len(), 23 * 8);
 
         for twist in &*HYPERCUBE_TWISTS {
-            assert_eq!(Twist::from_notation(&twist.to_string()), Some(*twist));
+            assert_eq!(TwistData::from_notation(&twist.to_string()), Some(*twist));
         }
 
-        assert!(Twist::from_notation("IRU").is_some());
-        assert_eq!(Twist::from_notation("IUR"), Twist::from_notation("IRU"));
-        assert_eq!(Twist::from_notation("UF5"), Twist::from_notation("UF"));
-        assert_eq!(Twist::from_notation("UF3"), Twist::from_notation("UF'"));
-        assert_eq!(Twist::from_notation("UF2"), Twist::from_notation("UF2'"));
+        assert!(TwistData::from_notation("IRU").is_some());
+        assert_eq!(
+            TwistData::from_notation("IUR"),
+            TwistData::from_notation("IRU")
+        );
+        assert_eq!(
+            TwistData::from_notation("UF5"),
+            TwistData::from_notation("UF")
+        );
+        assert_eq!(
+            TwistData::from_notation("UF3"),
+            TwistData::from_notation("UF'")
+        );
+        assert_eq!(
+            TwistData::from_notation("UF2"),
+            TwistData::from_notation("UF2'")
+        );
     }
 }

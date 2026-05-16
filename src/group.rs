@@ -14,11 +14,6 @@ impl Group {
         Group { generators }
     }
 
-    /// Constructs the group of cube rotations.
-    pub fn cube_rotations() -> Group {
-        Group::new(vec![Mat4::rot(X, Y), Mat4::rot(X, Z)])
-    }
-
     /// Constructs the group of hypercube rotations.
     pub fn hypercube_rotations() -> Group {
         Group::new(vec![Mat4::rot(X, Y), Mat4::rot(X, Z), Mat4::rot(X, W)])
