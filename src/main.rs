@@ -119,6 +119,8 @@ mod util;
 
 pub use prelude::*;
 
+use crate::prune::SubsetTrie;
+
 /// Common imports.
 pub mod prelude {
     pub use crate::linalg::*;

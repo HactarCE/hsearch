@@ -37,57 +37,26 @@ pub struct SubsetTrie {
     mask_len: u8,
     /// Mask that is required by `inner`.
     mask: u128,
+    /// Minimum lower bound among all descendants.
+    lower_bound: u8,
 
-    contents: SubsetTrieContents,
-}
-
-#[derive(Debug, Default, PartialEq, Eq)]
-pub enum SubsetTrieContents {
-    #[default]
-    Empty,
-    Value(u8),
-    Branch(Box<[SubsetTrie; 2]>),
-}
-
-impl SubsetTrieContents {
-    fn query_should_prune(&self, query_key: u128, remaining_search_depth: u8) -> bool {
-        match self {
-            SubsetTrieContents::Empty => true,
-            SubsetTrieContents::Value(v) => *v > remaining_search_depth,
-            SubsetTrieContents::Branch(children) => {
-                if query_key & 1 == 0 {
-                    children[0].query_should_prune(query_key >> 1, remaining_search_depth)
-                        && children[1].query_should_prune(query_key >> 1, remaining_search_depth)
-                } else {
-                    children[0].query_should_prune(query_key >> 1, remaining_search_depth)
-                }
-            }
-        }
-    }
-
-    /// Inserts an entry if it is less than the existing entry.
-    fn insert(&mut self, entry_key: u128, key_bits_remaining: u8, new_value: u8) {
-        match self {
-            SubsetTrieContents::Empty => {
-                *self = SubsetTrieContents::Value(new_value);
-            }
-            SubsetTrieContents::Value(old_value) => {
-                if new_value < *old_value {
-                    *old_value = new_value
-                }
-            }
-            SubsetTrieContents::Branch(b) => {
-                b[entry_key as usize & 1].insert(entry_key >> 1, key_bits_remaining, new_value);
-            }
-        }
-    }
+    children: Option<Box<[SubsetTrie; 2]>>,
 }
 
 impl SubsetTrie {
     pub fn query_should_prune(&self, query_key: u128, remaining_search_depth: u8) -> bool {
         if query_key & self.mask == 0 {
-            self.contents
-                .query_should_prune(query_key >> self.mask_len, remaining_search_depth)
+            self.lower_bound > remaining_search_depth
+                || self.children.as_ref().is_some_and(|children| {
+                    let child_bit = (query_key >> self.mask_len) & 1;
+                    let child_key = (query_key >> self.mask_len) >> 1;
+                    if child_bit == 0 {
+                        children[0].query_should_prune(child_key, remaining_search_depth)
+                            && children[1].query_should_prune(child_key, remaining_search_depth)
+                    } else {
+                        children[0].query_should_prune(child_key, remaining_search_depth)
+                    }
+                })
         } else {
             true
         }
@@ -95,26 +64,38 @@ impl SubsetTrie {
 
     /// Inserts an entry if it is less than the existing entry.
     fn insert(&mut self, entry_key: u128, key_bits_remaining: u8, new_value: u8) {
+        if new_value < self.lower_bound {
+            self.lower_bound = new_value;
+        }
         let shared_bits = (entry_key ^ self.mask).trailing_zeros() as u8;
         if shared_bits >= self.mask_len {
-            self.contents
-                .insert(entry_key >> self.mask_len, key_bits_remaining, new_value);
+            match &mut self.children {
+                Some(children) => {
+                    let child_bit = (entry_key >> self.mask_len) & 1;
+                    let child_key = (entry_key >> self.mask_len) >> 1;
+                    children[child_bit as usize].insert(child_key, key_bits_remaining, new_value);
+                }
+                None => return,
+            }
         } else {
             let old_child_branch_bit = (self.mask >> shared_bits) & 1;
             let old_child = SubsetTrie {
                 mask_len: self.mask_len - shared_bits - 1,
                 mask: self.mask >> (shared_bits + 1),
-                contents: std::mem::take(&mut self.contents),
+                lower_bound: self.lower_bound,
+                children: self.children.take(),
             };
             let new_child = SubsetTrie {
                 mask_len: key_bits_remaining - shared_bits - 1,
                 mask: entry_key >> (shared_bits + 1),
-                contents: SubsetTrieContents::Value(new_value),
+                lower_bound: new_value,
+                children: None,
             };
             *self = SubsetTrie {
                 mask_len: shared_bits,
                 mask: self.mask & ((1 << shared_bits) - 1),
-                contents: SubsetTrieContents::Branch(Box::new(if old_child_branch_bit == 0 {
+                lower_bound: std::cmp::min(self.lower_bound, new_value),
+                children: Some(Box::new(if old_child_branch_bit == 0 {
                     [old_child, new_child]
                 } else {
                     [new_child, old_child]
@@ -127,7 +108,8 @@ impl SubsetTrie {
         Self {
             mask_len: key_bits,
             mask: key,
-            contents: SubsetTrieContents::Value(value),
+            lower_bound: value,
+            children: None,
         }
     }
 
@@ -204,7 +186,7 @@ impl SubsetTrie {
         for (i, (&k, &v)) in new_hashmap.iter().enumerate() {
             ret.insert(k, total_bits, v);
             if i % 1_000_000 == 0 && i > 0 {
-                println!("  done {i}/{entry_count}");
+                println!("  done {}/{}M", i / 1_000_000, entry_count / 1_000_000);
             }
         }
         ret
@@ -249,7 +231,8 @@ impl SubsetTrie {
 
     fn serialize(&self) -> Vec<u8> {
         let mut buf = vec![];
-        self.ser_to_buf(&mut BitWriteStream::new(&mut buf, LittleEndian));
+        self.ser_to_buf(&mut BitWriteStream::new(&mut buf, LittleEndian))
+            .unwrap();
         buf
     }
 
@@ -264,24 +247,16 @@ impl SubsetTrie {
         let Self {
             mask_len,
             mask,
-            contents,
+            lower_bound,
+            children,
         } = self;
         buf.write_int(*mask_len, 8)?;
         buf.write_int(*mask, *mask_len as usize)?;
-        match contents {
-            SubsetTrieContents::Empty => {
-                buf.write_bool(false)?;
-                buf.write_int(0, DEPTH_BITS)?;
-            }
-            SubsetTrieContents::Value(v) => {
-                buf.write_bool(false)?;
-                buf.write_int(*v + 1, DEPTH_BITS)?;
-            }
-            SubsetTrieContents::Branch(children) => {
-                buf.write_bool(true)?;
-                children[0].ser_to_buf(buf)?;
-                children[1].ser_to_buf(buf)?;
-            }
+        buf.write_int(*lower_bound, DEPTH_BITS)?;
+        buf.write_bool(children.is_some())?;
+        if let Some(children) = children {
+            children[0].ser_to_buf(buf)?;
+            children[1].ser_to_buf(buf)?;
         }
         Ok(())
     }
@@ -289,21 +264,20 @@ impl SubsetTrie {
     fn deser_from_buf(buf: &mut BitReadStream<'_, LittleEndian>) -> bitbuffer::Result<Self> {
         let mask_len = buf.read_int::<u8>(8)?;
         let mask = buf.read_int::<u128>(mask_len as usize)?;
-        let contents = if buf.read_bool()? {
-            SubsetTrieContents::Branch(Box::new([
+        let lower_bound = buf.read_int(DEPTH_BITS)?;
+        let children = if buf.read_bool()? {
+            Some(Box::new([
                 Self::deser_from_buf(buf)?,
                 Self::deser_from_buf(buf)?,
             ]))
         } else {
-            match buf.read_int::<u8>(DEPTH_BITS)?.checked_sub(1) {
-                Some(v) => SubsetTrieContents::Value(v),
-                None => SubsetTrieContents::Empty,
-            }
+            None
         };
         Ok(Self {
             mask_len,
             mask,
-            contents,
+            lower_bound,
+            children,
         })
     }
 }
