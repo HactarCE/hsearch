@@ -66,9 +66,7 @@ pub fn twists_to_string(twists: &[Twist]) -> String {
 
 /// Returns a deterministic scramble from a random seed.
 pub fn scramble(seed: u64) -> Vec<Twist> {
-    let mut seed_bytes = [0; 32];
-    seed_bytes[..8].copy_from_slice(&seed.to_le_bytes());
-    let mut rng = rand::rngs::StdRng::from_seed(seed_bytes);
+    let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
     std::iter::from_fn(|| Twist::iter().choose(&mut rng))
         .take(crate::SCRAMBLE_LEN)
         .collect()
