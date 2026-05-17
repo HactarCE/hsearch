@@ -19,6 +19,17 @@ pub enum Axis {
     W = 3,
 }
 
+impl fmt::Display for Axis {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            X => write!(f, "x"),
+            Y => write!(f, "y"),
+            Z => write!(f, "z"),
+            W => write!(f, "w"),
+        }
+    }
+}
+
 impl Axis {
     /// List of all 4 axes in canonical order.
     pub const ALL: [Axis; 4] = [X, Y, Z, W];
@@ -43,6 +54,13 @@ impl Axis {
             3 => W,
             _ => panic!("bad axis number"),
         }
+    }
+
+    /// Constructs a rotation matrix from `self` to `dst`.
+    ///
+    /// If `self == dst`, returns the identity matrix.
+    pub fn rot_to(self, dst: Axis) -> Mat4 {
+        Mat4::rot(self, dst)
     }
 }
 
@@ -152,6 +170,24 @@ impl Vec4 {
         )
         .map(|(w, z, y, x)| Vec4([x, y, z, w]))
     }
+
+    /// Returns the last nonzero axis in the vector, or `None` if the vector is
+    /// zero.
+    pub fn last_nonzero_axis(self) -> Option<Axis> {
+        self.0
+            .iter()
+            .rposition(|&x| x != 0)
+            .map(|i| Axis::from_u8(i as u8))
+    }
+
+    /// Returns the first axis from `order` that is nonzero in the vector, or
+    /// `None` if they are all zero.
+    pub fn unwrap_first_nonzero_axis(self, order: [Axis; 4]) -> Axis {
+        order
+            .into_iter()
+            .find(|&ax| self[ax] != 0)
+            .expect("all axes are zero")
+    }
 }
 
 /// Row-major matrix.
@@ -178,13 +214,16 @@ impl Mul for Mat4 {
 
 impl Mat4 {
     /// Constructs a rotation matrix from `ax1` to `ax2`.
+    ///
+    /// If `ax1 == ax2`, returns the identity matrix.
     pub fn rot(ax1: Axis, ax2: Axis) -> Mat4 {
         let mut ret = IDENT;
-        assert_ne!(ax1, ax2);
-        ret[ax1][ax1] = 0;
-        ret[ax2][ax2] = 0;
-        ret[ax1][ax2] = -1;
-        ret[ax2][ax1] = 1;
+        if ax1 != ax2 {
+            ret[ax1][ax1] = 0;
+            ret[ax2][ax2] = 0;
+            ret[ax1][ax2] = -1;
+            ret[ax2][ax1] = 1;
+        }
         ret
     }
 
@@ -321,6 +360,7 @@ impl_index_by_axis!(Mat4, Vec4);
 /// Trait for types that can be transformed by a matrix.
 pub trait TransformByMat4 {
     /// Transforms `self` by the matrix `m`.
+    #[must_use]
     fn transform_by(&self, m: Mat4) -> Self;
 }
 
@@ -459,5 +499,13 @@ mod tests {
         assert_eq!(m_inv * (m * v), v);
 
         assert_eq!(m.t().inv(), m.inv().t()); // just for fun
+    }
+
+    #[test]
+    fn test_transform_mat4() {
+        assert_eq!(
+            Mat4::rot(Z, X).transform_by(Mat4::rot(X, Y)),
+            Mat4::rot(Z, Y),
+        );
     }
 }

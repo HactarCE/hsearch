@@ -3,12 +3,11 @@
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
-use std::hash::Hash;
 
 use itertools::Itertools;
 
 use crate::HYPERCUBE_TWISTS;
-use crate::TwistData;
+use crate::Mat4;
 use crate::Vec4;
 
 /// Lookup table for permuting pieces.
@@ -48,8 +47,9 @@ impl PermutationLut {
         bit_offset: usize,
         bits_per_element: usize,
         state_var: &str,
-        twist_var: &str,
     ) -> String {
+        let twist_var = "twist";
+
         assert!(
             self.piece_count * bits_per_element + bit_offset <= int_width,
             "integer is not wide enough",
@@ -87,24 +87,24 @@ impl PermutationLut {
 pub struct OrientationLut {
     /// For each twist, for each piece location, for each orientation: the new
     /// orientation.
-    table: Vec<Vec<Vec<usize>>>,
+    table: Vec<Vec<Vec<u8>>>,
 }
 
 impl OrientationLut {
     /// Generates a lookup table that updates the orientation for each piece
     /// according to a twist.
-    pub fn new<A: Copy, P: Copy + Eq + Hash>(
-        pieces: &[Vec4],
-        orientation_count: usize,
-        act: impl Fn(TwistData, Vec4, usize) -> usize,
-    ) -> Self {
+    pub fn new(pieces: &[Vec4], orientation_count: u8, act: impl Fn(Mat4, Vec4, u8) -> u8) -> Self {
         Self {
             table: HYPERCUBE_TWISTS
                 .iter()
-                .map(|&a| {
+                .map(|&t| {
                     pieces
                         .iter()
-                        .map(|&p| (0..orientation_count).map(|o| act(a, p, o)).collect())
+                        .map(|&p| {
+                            (0..orientation_count)
+                                .map(|o| if t.affects(p) { act(t.rot, p, o) } else { o })
+                                .collect()
+                        })
                         .collect()
                 })
                 .collect(),
@@ -120,8 +120,9 @@ impl OrientationLut {
         bit_offset: usize,
         bits_per_element: usize,
         state_var: &str,
-        twist_var: &str,
     ) -> String {
+        let twist_var = "twist";
+
         let point_count = self.table[0].len();
         assert!(point_count * bits_per_element + bit_offset <= int_width);
 
@@ -177,7 +178,7 @@ impl OrientationLut {
             s += &format!("        [0x{m1:X}, 0x{ma:X}, 0x{mb:X}],\n");
         }
 
-        s += &format!("    ][{twist_var}],\n");
+        s += &format!("    ][{twist_var}.to_index()],\n");
         s += ")\n";
         s
     }

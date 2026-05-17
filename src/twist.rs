@@ -1,15 +1,15 @@
 use std::ops::Index;
 
-use crate::puzzle::*;
+use crate::{TransformByMat4, puzzle::*};
 
 /// Twist of the puzzle.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Twist(u8);
+pub struct Twist(pub u8);
 
 impl Twist {
     /// Returns the index corresponding to the twist.
-    pub fn to_index(self) -> u8 {
-        self.0
+    pub fn to_index(self) -> usize {
+        self.0 as usize
     }
 
     /// Returns an iterator over all twists.
@@ -19,12 +19,20 @@ impl Twist {
 
     /// Returns the data for the twist.
     pub fn data(self) -> TwistData {
-        HYPERCUBE_TWISTS[self.to_index() as usize]
+        HYPERCUBE_TWISTS[self.to_index()]
     }
 
     /// Returns the facet of the twist.
     pub fn facet(self) -> Facet {
         Facet::from_u8(self.0 & 7)
+    }
+}
+
+impl TransformByMat4 for Twist {
+    fn transform_by(&self, m: crate::prelude::Mat4) -> Self {
+        *TWIST_DATA_TO_TWIST
+            .get(&self.data().transform_by(m))
+            .expect("no transformed twist")
     }
 }
 
@@ -59,6 +67,8 @@ impl TwistSet {
 
 #[cfg(test)]
 mod tests {
+    use crate::Axis::{X, Y};
+
     use super::*;
 
     #[test]
@@ -71,5 +81,14 @@ mod tests {
         for t in Twist::iter() {
             assert_eq!(t.facet(), t.data().facet);
         }
+    }
+
+    #[test]
+    fn test_transform_twist() {
+        let t = crate::util::parse_twists("RO")[0];
+        assert_eq!(
+            t.transform_by(crate::Mat4::rot(X, Y)),
+            crate::util::parse_twists("UO")[0],
+        );
     }
 }

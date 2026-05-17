@@ -110,13 +110,20 @@ mod canonical;
 mod group;
 mod linalg;
 mod lut_gen;
+mod prune;
 mod puzzle;
 mod search;
 mod stages;
 mod twist;
 mod util;
 
+use bitbuffer::{BitReadBuffer, BitReadStream, BitWriteStream, LittleEndian};
 pub use prelude::*;
+
+use crate::{
+    prune::SubsetTrie,
+    stages::{Stage1, SubsetMaskStage},
+};
 
 /// Common imports.
 pub mod prelude {
@@ -125,13 +132,14 @@ pub mod prelude {
     pub use crate::twist::*;
 }
 
-pub const SCRAMBLE_LEN: usize = 500;
+pub const SCRAMBLE_LEN: usize = 50;
 
 fn main() {
-    for i in 0..1 {
+    for i in 0..100 {
         let scramble = util::scramble(i);
-        println!("{}", util::twists_to_string(&scramble));
+        // println!("{}", util::twists_to_string(&scramble));
         let sol = search::solve(scramble);
-        println!("{}", util::twists_to_string(&sol));
+        // println!("{}", util::twists_to_string(&sol));
+        println!();
     }
 }

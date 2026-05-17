@@ -4,13 +4,16 @@ use std::{collections::HashMap, fmt, sync::LazyLock};
 
 use itertools::Itertools;
 
-use crate::linalg::*;
+use crate::{Twist, linalg::*};
 
 pub use Facet::{B, D, F, I, L, O, R, U};
 
 /// List of all twists on a hypercube puzzle.
 pub static HYPERCUBE_TWISTS: LazyLock<Vec<TwistData>> =
     LazyLock::new(|| TWISTS_WITH_NAMES.iter().map(|(_, twist)| *twist).collect());
+
+pub static TWIST_DATA_TO_TWIST: LazyLock<HashMap<TwistData, Twist>> =
+    LazyLock::new(|| std::iter::zip(HYPERCUBE_TWISTS.iter().copied(), Twist::iter()).collect());
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum PieceType {
@@ -206,6 +209,28 @@ impl Facet {
     pub fn vec4(self) -> Vec4 {
         self.axis().unit() * self.sign() as _
     }
+
+    /// Constructs a rotation or reflection matrix from `self` to `dst`.
+    ///
+    /// If `self == dst`, returns the identity matrix. If `self` and `dst` are
+    /// opposite, returns a reflection that takes `self` to `dst`. Otherwise,
+    /// returns a 90-degree rotation matrix.
+    pub fn mat4_to(self, dst: Facet) -> Mat4 {
+        if self == dst {
+            IDENT
+        } else if self.axis() == dst.axis() {
+            // reflection
+            let mut ret = IDENT;
+            ret[self.axis()][self.axis()] = -1;
+            ret
+        } else {
+            if self.sign() == dst.sign() {
+                self.axis().rot_to(dst.axis())
+            } else {
+                dst.axis().rot_to(self.axis())
+            }
+        }
+    }
 }
 
 /// Twist of an outer layer of the puzzle.
@@ -399,5 +424,22 @@ mod tests {
             TwistData::from_notation("UF2"),
             TwistData::from_notation("UF2'")
         );
+    }
+
+    #[test]
+    fn test_facet_mat4_to() {
+        for f1 in Facet::ALL {
+            for f2 in Facet::ALL {
+                let m = f1.mat4_to(f2);
+                assert_eq!(f1.transform_by(m), f2);
+                if f1 == f2 {
+                    assert_eq!(m, IDENT);
+                } else if f1.axis() == f2.axis() {
+                    assert_eq!(m.det(), -1);
+                } else {
+                    assert_eq!(m.det(), 1);
+                }
+            }
+        }
     }
 }
