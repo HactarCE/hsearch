@@ -202,7 +202,7 @@ impl Facet {
 
     /// Returns whether the given vector is in the region of the facet.
     pub fn has_vector(self, v: Vec4) -> bool {
-        v[self.axis()] == self.sign() as _
+        v[self.axis()] == self.sign() as i8
     }
 
     /// Returns the normal vector of the facet.
