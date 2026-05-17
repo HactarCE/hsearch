@@ -1,3 +1,4 @@
+use std::ops::{Deref, DerefMut};
 use std::{collections::HashMap, hash::Hash, io::BufRead, sync::LazyLock};
 
 use bitbuffer::{BitReadBuffer, BitReadStream, BitWriteStream, LittleEndian};
@@ -28,6 +29,14 @@ pub static PRUNING_TABLES: PruningTables = PruningTables {
     }),
 };
 
+thread_local! {
+    static ALLOC: &'static bumpalo::Bump = Box::leak(Box::new(bumpalo::Bump::new()));
+}
+
+fn thread_local_bump_allocator() -> &'static bumpalo::Bump {
+    ALLOC.with(|a| *a)
+}
+
 /// Pruning table using a path-compressed trie that requires the lookup key to
 /// have a subset of the bits of the entry key. All matching entries are scanned
 /// and the one with the lowest value is returned.
@@ -40,7 +49,7 @@ pub struct SubsetTrie {
     /// Minimum lower bound among all descendants.
     lower_bound: u8,
 
-    children: Option<Box<[SubsetTrie; 2]>>,
+    children: Option<&'static mut SubsetTrieChildren>,
 }
 
 impl SubsetTrie {
@@ -63,7 +72,13 @@ impl SubsetTrie {
     }
 
     /// Inserts an entry if it is less than the existing entry.
-    fn insert(&mut self, entry_key: u128, key_bits_remaining: u8, new_value: u8) {
+    fn insert(
+        &mut self,
+        alloc: &'static bumpalo::Bump,
+        entry_key: u128,
+        key_bits_remaining: u8,
+        new_value: u8,
+    ) {
         let shared_bits = (entry_key ^ self.mask).trailing_zeros() as u8;
         if shared_bits >= self.mask_len {
             if new_value < self.lower_bound {
@@ -74,7 +89,12 @@ impl SubsetTrie {
                     let child_bit = (entry_key >> self.mask_len) & 1;
                     let child_key = (entry_key >> self.mask_len) >> 1;
                     let child_bits_remaining = key_bits_remaining - self.mask_len - 1;
-                    children[child_bit as usize].insert(child_key, child_bits_remaining, new_value);
+                    children[child_bit as usize].insert(
+                        alloc,
+                        child_key,
+                        child_bits_remaining,
+                        new_value,
+                    );
                 }
                 None => return,
             }
@@ -96,11 +116,13 @@ impl SubsetTrie {
                 mask_len: shared_bits,
                 mask: self.mask & ((1 << shared_bits) - 1),
                 lower_bound: std::cmp::min(self.lower_bound, new_value),
-                children: Some(Box::new(if old_child_branch_bit == 0 {
-                    [old_child, new_child]
-                } else {
-                    [new_child, old_child]
-                })),
+                children: Some(
+                    alloc.alloc(SubsetTrieChildren(if old_child_branch_bit == 0 {
+                        [old_child, new_child]
+                    } else {
+                        [new_child, old_child]
+                    })),
+                ),
             };
         }
     }
@@ -184,8 +206,9 @@ impl SubsetTrie {
         }
         let entry_count = new_hashmap.len();
         println!("Assembling subset trie with {entry_count} entries ...");
+        let alloc = ALLOC.with(|a| *a);
         for (i, (&k, &v)) in new_hashmap.iter().enumerate() {
-            ret.insert(k, total_bits, v);
+            ret.insert(alloc, k, total_bits, v);
             if i % 1_000_000 == 0 && i > 0 {
                 println!("  done {}/{}M", i / 1_000_000, entry_count / 1_000_000);
             }
@@ -238,10 +261,10 @@ impl SubsetTrie {
     }
 
     fn deserialize(buf: &[u8]) -> bitbuffer::Result<Self> {
-        Self::deser_from_buf(&mut BitReadStream::new(BitReadBuffer::new(
-            &buf,
-            LittleEndian,
-        )))
+        Self::deser_from_buf(
+            thread_local_bump_allocator(),
+            &mut BitReadStream::new(BitReadBuffer::new(&buf, LittleEndian)),
+        )
     }
 
     fn ser_to_buf(&self, buf: &mut BitWriteStream<'_, LittleEndian>) -> bitbuffer::Result<()> {
@@ -267,14 +290,17 @@ impl SubsetTrie {
         Ok(())
     }
 
-    fn deser_from_buf(buf: &mut BitReadStream<'_, LittleEndian>) -> bitbuffer::Result<Self> {
+    fn deser_from_buf(
+        alloc: &'static bumpalo::Bump,
+        buf: &mut BitReadStream<'_, LittleEndian>,
+    ) -> bitbuffer::Result<Self> {
         let mask_len = buf.read_int::<u8>(8)?;
         let mask = buf.read_int::<u128>(mask_len as usize)?;
         let children = if buf.read_bool()? {
-            Some(Box::new([
-                Self::deser_from_buf(buf)?,
-                Self::deser_from_buf(buf)?,
-            ]))
+            Some(alloc.alloc(SubsetTrieChildren([
+                Self::deser_from_buf(alloc, buf)?,
+                Self::deser_from_buf(alloc, buf)?,
+            ])))
         } else {
             None
         };
@@ -288,6 +314,25 @@ impl SubsetTrie {
             lower_bound,
             children,
         })
+    }
+}
+
+/// Wrapper around `[SubsetTrie; 2]` for cache alignment.
+#[derive(Debug, PartialEq, Eq)]
+#[repr(align(64))]
+struct SubsetTrieChildren([SubsetTrie; 2]);
+
+impl Deref for SubsetTrieChildren {
+    type Target = [SubsetTrie; 2];
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for SubsetTrieChildren {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
     }
 }
 

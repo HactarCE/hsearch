@@ -119,8 +119,6 @@ mod util;
 
 pub use prelude::*;
 
-use crate::prune::SubsetTrie;
-
 /// Common imports.
 pub mod prelude {
     pub use crate::linalg::*;
@@ -131,11 +129,13 @@ pub mod prelude {
 pub const SCRAMBLE_LEN: usize = 50;
 
 fn main() {
-    for i in 0..100 {
+    let t = std::time::Instant::now();
+    for i in 0..10 {
         let scramble = util::scramble(i);
         // println!("{}", util::twists_to_string(&scramble));
         let sol = search::solve(scramble);
         // println!("{}", util::twists_to_string(&sol));
         println!();
     }
+    println!("Done in {:?}", t.elapsed());
 }
