@@ -28,14 +28,9 @@ pub fn solve(scramble: Vec<Twist>) -> Vec<Twist> {
     .collect_vec();
     let solutions = iddfs(
         &init_options,
-        |s| {
-            if s.is_solved() {
-                0
-            } else {
-                s1_pps_prune
-                    .query(s.subset_trie_key())
-                    .unwrap_or(PruningTables::S1_PPS_PRUNE_DEPTH + 1)
-            }
+        |state, remaining_search_depth| {
+            remaining_search_depth <= PruningTables::S1_PPS_PRUNE_DEPTH
+                && s1_pps_prune.query_should_prune(state.subset_trie_key(), remaining_search_depth)
         },
         6,
     );
@@ -44,10 +39,10 @@ pub fn solve(scramble: Vec<Twist>) -> Vec<Twist> {
 
 pub fn unwrap_iddfs<S: Stage>(
     init_options: &[(String, S)],
-    get_distance_lower_bound: impl Sync + Fn(S) -> u8,
+    should_prune: impl Sync + Fn(S, u8) -> bool,
     max_depth: u8,
 ) -> Vec<Twist> {
-    let solutions = iddfs(init_options, get_distance_lower_bound, max_depth);
+    let solutions = iddfs(init_options, should_prune, max_depth);
     println!("Found {} solutions", solutions.len());
     solutions.into_iter().next().expect("no solution found")
 }
@@ -55,7 +50,7 @@ pub fn unwrap_iddfs<S: Stage>(
 /// Iterative-deepening depth-first search.
 pub fn iddfs<S: Stage>(
     init_options: &[(String, S)],
-    get_distance_lower_bound: impl Sync + Fn(S) -> u8,
+    should_prune: impl Sync + Fn(S, u8) -> bool,
     max_depth: u8,
 ) -> Vec<Vec<Twist>> {
     for depth in 0..=max_depth {
@@ -67,7 +62,7 @@ pub fn iddfs<S: Stage>(
                 dfs(
                     *init,
                     PrevTwists::new(),
-                    &get_distance_lower_bound,
+                    &should_prune,
                     depth,
                     &mut vec![],
                     &mut solutions,
@@ -100,7 +95,7 @@ pub fn iddfs<S: Stage>(
 pub fn dfs<S: Stage>(
     state: S,
     prev_twists: PrevTwists,
-    get_distance_lower_bound: &impl Fn(S) -> u8,
+    should_prune: &impl Fn(S, u8) -> bool,
     remaining_depth: u8,
     solution_buffer: &mut Vec<Twist>,
     solutions: &mut Vec<Vec<Twist>>,
@@ -108,14 +103,9 @@ pub fn dfs<S: Stage>(
     if state.is_solved() {
         solutions.push(solution_buffer.clone());
         return;
-    } else {
-        if get_distance_lower_bound(state) > remaining_depth {
-            return; // prune
-        }
     }
-
-    if remaining_depth == 0 {
-        return; // die
+    if remaining_depth == 0 || should_prune(state, remaining_depth) {
+        return;
     }
 
     for twist in Twist::iter() {
@@ -126,7 +116,7 @@ pub fn dfs<S: Stage>(
         dfs(
             state.do_twist(twist),
             new_prev_twists,
-            get_distance_lower_bound,
+            should_prune,
             remaining_depth - 1,
             solution_buffer,
             solutions,

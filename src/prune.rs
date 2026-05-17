@@ -50,16 +50,18 @@ pub enum SubsetTrieContents {
 }
 
 impl SubsetTrieContents {
-    fn query(&self, query_key: u128) -> Option<u8> {
+    fn query_should_prune(&self, query_key: u128, remaining_search_depth: u8) -> bool {
         match self {
-            SubsetTrieContents::Empty => None,
-            SubsetTrieContents::Value(v) => Some(*v),
-            SubsetTrieContents::Branch(children) => children
-                .iter()
-                .enumerate()
-                .filter(|(i, _child)| query_key as usize & i == 0)
-                .filter_map(|(_i, child)| child.query(query_key >> 1))
-                .min(),
+            SubsetTrieContents::Empty => true,
+            SubsetTrieContents::Value(v) => *v > remaining_search_depth,
+            SubsetTrieContents::Branch(children) => {
+                if query_key & 1 == 0 {
+                    children[0].query_should_prune(query_key >> 1, remaining_search_depth)
+                        && children[1].query_should_prune(query_key >> 1, remaining_search_depth)
+                } else {
+                    children[0].query_should_prune(query_key >> 1, remaining_search_depth)
+                }
+            }
         }
     }
 
@@ -82,11 +84,12 @@ impl SubsetTrieContents {
 }
 
 impl SubsetTrie {
-    pub fn query(&self, query_key: u128) -> Option<u8> {
+    pub fn query_should_prune(&self, query_key: u128, remaining_search_depth: u8) -> bool {
         if query_key & self.mask == 0 {
-            self.contents.query(query_key >> self.mask_len)
+            self.contents
+                .query_should_prune(query_key >> self.mask_len, remaining_search_depth)
         } else {
-            None
+            true
         }
     }
 
