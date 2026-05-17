@@ -122,8 +122,5 @@ pub fn dfs<S: Stage>(
             solutions,
         );
         solution_buffer.pop();
-        if !solutions.is_empty() {
-            return;
-        }
     }
 }
