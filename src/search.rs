@@ -3,7 +3,6 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::canonical::PrevTwists;
 use crate::prelude::*;
-use crate::prune::{PRUNING_TABLES, PruningTables};
 use crate::stages::*;
 use crate::util::twists_to_string;
 
@@ -29,8 +28,7 @@ pub fn solve(scramble: Vec<Twist>) -> Vec<Twist> {
     let solutions = iddfs(
         &init_options,
         |state, remaining_search_depth| {
-            remaining_search_depth <= PruningTables::S1_PPSRO_PRUNE_DEPTH
-                && s1_pps_prune.query_should_prune(state.subset_trie_key(), remaining_search_depth)
+            s1_pps_prune.query_should_prune(state.subset_trie_key(), remaining_search_depth)
         },
         6,
     );

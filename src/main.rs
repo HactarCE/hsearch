@@ -122,6 +122,7 @@ pub use prelude::*;
 /// Common imports.
 pub mod prelude {
     pub use crate::linalg::*;
+    pub use crate::prune::*;
     pub use crate::puzzle::*;
     pub use crate::twist::*;
 }

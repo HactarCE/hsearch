@@ -1,47 +1,72 @@
 use std::ops::{Deref, DerefMut};
-use std::{collections::HashMap, hash::Hash, io::BufRead, sync::LazyLock};
+use std::{collections::HashMap, io::BufRead};
 
 use bitbuffer::{BitReadBuffer, BitReadStream, BitWriteStream, LittleEndian};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 
-use crate::{
-    Twist,
-    canonical::PrevTwists,
-    stages::{Stage, Stage1, SubsetMaskStage},
-};
+use crate::{Twist, canonical::PrevTwists, stages::SubsetMaskStage};
 
 const DEPTH_BITS: usize = 3;
 
-pub struct PruningTables {
-    pub s1_pps: LazyLock<SubsetTrie>,
+#[derive(Debug)]
+pub struct PruningTrie {
+    root: TrieNode,
+    max_depth: u8,
 }
 
-impl PruningTables {
-    pub const S1_PPSRO_PRUNE_DEPTH: u8 = 4;
-}
+impl PruningTrie {
+    /// Returns the depth of the search that generated the purning trie.
+    pub fn depth(&self) -> u8 {
+        self.max_depth
+    }
 
-pub static PRUNING_TABLES: PruningTables = PruningTables {
-    s1_pps: LazyLock::new(|| {
-        crate::prune::SubsetTrie::make_or_load_pruning_table::<Stage1>(
-            PruningTables::S1_PPSRO_PRUNE_DEPTH,
-            "s1_ppsro",
-        )
-    }),
-};
+    /// Returns whether the given branch should be pruned.
+    pub fn query_should_prune(&self, query_key: u128, remaining_search_depth: u8) -> bool {
+        remaining_search_depth <= self.max_depth
+            && self
+                .root
+                .query_should_prune(query_key, remaining_search_depth)
+    }
 
-thread_local! {
-    static ALLOC: &'static bumpalo::Bump = Box::leak(Box::new(bumpalo::Bump::new()));
-}
-
-fn thread_local_bump_allocator() -> &'static bumpalo::Bump {
-    ALLOC.with(|a| *a)
+    /// Loads a pruning table from a file, or generates one if the file is
+    /// missing.
+    ///
+    /// Prompts the user before saving a new file.
+    pub fn load_or_generate<S: SubsetMaskStage>(max_depth: u8, filename: &str) -> Self {
+        let filename = format!("{filename}_depth{max_depth}.bin");
+        let root;
+        if std::fs::exists(&filename).unwrap_or(false) {
+            println!("Loading pruning table {filename}");
+            root = TrieNode::deserialize(&std::fs::read(&filename).unwrap()).unwrap();
+            println!("Done loading pruning table {filename}");
+        } else {
+            println!("Missing pruning table {filename}; generating ...");
+            let t = std::time::Instant::now();
+            root = TrieNode::new::<S>(max_depth);
+            let dur = t.elapsed();
+            println!("Generated pruning table in {dur:?}. Serializing ...");
+            let serialized = root.serialize();
+            println!(
+                "Pruning table file is {} bytes. Press enter to save.",
+                serialized.len()
+            );
+            std::io::stdin()
+                .lock()
+                .read_line(&mut String::new())
+                .unwrap();
+            println!("Saving pruning table to {filename} ...");
+            std::fs::write(&filename, &serialized).unwrap();
+            println!("Done saving pruning table {filename}");
+        }
+        Self { root, max_depth }
+    }
 }
 
 /// Pruning table using a path-compressed trie that requires the lookup key to
 /// have a subset of the bits of the entry key. All matching entries are scanned
 /// and the one with the lowest value is returned.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub struct SubsetTrie {
+struct TrieNode {
     /// Number of bits in `mask`.
     mask_len: u8,
     /// Mask that is required by `inner`.
@@ -49,11 +74,11 @@ pub struct SubsetTrie {
     /// Minimum lower bound among all descendants.
     lower_bound: u8,
 
-    children: Option<&'static mut SubsetTrieChildren>,
+    children: Option<&'static mut TrieChildren>,
 }
 
-impl SubsetTrie {
-    pub fn query_should_prune(&self, query_key: u128, remaining_search_depth: u8) -> bool {
+impl TrieNode {
+    fn query_should_prune(&self, query_key: u128, remaining_search_depth: u8) -> bool {
         if query_key & self.mask == 0 {
             self.lower_bound > remaining_search_depth
                 || self.children.as_ref().is_some_and(|children| {
@@ -100,34 +125,32 @@ impl SubsetTrie {
             }
         } else {
             let old_child_branch_bit = (self.mask >> shared_bits) & 1;
-            let old_child = SubsetTrie {
+            let old_child = TrieNode {
                 mask_len: self.mask_len - shared_bits - 1,
                 mask: self.mask >> (shared_bits + 1),
                 lower_bound: self.lower_bound,
                 children: self.children.take(),
             };
-            let new_child = SubsetTrie {
+            let new_child = TrieNode {
                 mask_len: key_bits_remaining - shared_bits - 1,
                 mask: entry_key >> (shared_bits + 1),
                 lower_bound: new_value,
                 children: None,
             };
-            *self = SubsetTrie {
+            *self = TrieNode {
                 mask_len: shared_bits,
                 mask: self.mask & ((1 << shared_bits) - 1),
                 lower_bound: std::cmp::min(self.lower_bound, new_value),
-                children: Some(
-                    alloc.alloc(SubsetTrieChildren(if old_child_branch_bit == 0 {
-                        [old_child, new_child]
-                    } else {
-                        [new_child, old_child]
-                    })),
-                ),
+                children: Some(alloc.alloc(TrieChildren(if old_child_branch_bit == 0 {
+                    [old_child, new_child]
+                } else {
+                    [new_child, old_child]
+                }))),
             };
         }
     }
 
-    pub fn with_single_entry(key: u128, key_bits: u8, value: u8) -> Self {
+    fn with_single_entry(key: u128, key_bits: u8, value: u8) -> Self {
         Self {
             mask_len: key_bits,
             mask: key,
@@ -136,7 +159,7 @@ impl SubsetTrie {
         }
     }
 
-    pub fn new<S: SubsetMaskStage>(max_depth: u8) -> Self {
+    fn new<S: SubsetMaskStage>(max_depth: u8) -> Self {
         assert!(max_depth < ((1 << DEPTH_BITS) - 1));
 
         let total_bits = S::SUBSET_TRIE_KEY_BITS as u8;
@@ -189,7 +212,7 @@ impl SubsetTrie {
             t.elapsed(),
             entry_count_estimate,
         );
-        let mut ret = SubsetTrie::with_single_entry(init_mask.subset_trie_key(), total_bits, 0);
+        let mut ret = TrieNode::with_single_entry(init_mask.subset_trie_key(), total_bits, 0);
         let mut new_hashmap = HashMap::new();
         println!("Deduplicating entries ...");
         for map in entry_maps {
@@ -206,7 +229,7 @@ impl SubsetTrie {
         }
         let entry_count = new_hashmap.len();
         println!("Assembling subset trie with {entry_count} entries ...");
-        let alloc = ALLOC.with(|a| *a);
+        let alloc = super::thread_local_bump_allocator();
         for (i, (&k, &v)) in new_hashmap.iter().enumerate() {
             ret.insert(alloc, k, total_bits, v);
             if i % 1_000_000 == 0 && i > 0 {
@@ -214,43 +237,6 @@ impl SubsetTrie {
             }
         }
         ret
-    }
-
-    pub fn make_or_load_pruning_table<S: SubsetMaskStage>(max_depth: u8, filename: &str) -> Self {
-        let filename = format!("{filename}_depth{max_depth}.bin");
-        if std::fs::exists(&filename).unwrap_or(false) {
-            println!("Loading pruning table {filename}");
-            let ret = Self::load_from_file(&filename);
-            println!("Done loading pruning table {filename}");
-            ret
-        } else {
-            println!("Missing pruning table {filename}; generating ...");
-            let t = std::time::Instant::now();
-            let pruning_table = Self::new::<S>(max_depth);
-            let dur = t.elapsed();
-            println!("Generated pruning table in {dur:?}. Serializing ...");
-            let serialized = pruning_table.serialize();
-            println!(
-                "Pruning table file is {} bytes. Press enter to save.",
-                serialized.len()
-            );
-            std::io::stdin()
-                .lock()
-                .read_line(&mut String::new())
-                .unwrap();
-            println!("Saving pruning table to {filename} ...");
-            std::fs::write(&filename, &serialized).unwrap();
-            println!("Done saving pruning table {filename}");
-            pruning_table
-        }
-    }
-
-    fn save_to_file(&self, filename: &str) {
-        std::fs::write(filename, &self.serialize()).unwrap();
-    }
-
-    fn load_from_file(filename: &str) -> Self {
-        Self::deserialize(&std::fs::read(filename).unwrap()).unwrap()
     }
 
     fn serialize(&self) -> Vec<u8> {
@@ -262,7 +248,7 @@ impl SubsetTrie {
 
     fn deserialize(buf: &[u8]) -> bitbuffer::Result<Self> {
         Self::deser_from_buf(
-            thread_local_bump_allocator(),
+            super::thread_local_bump_allocator(),
             &mut BitReadStream::new(BitReadBuffer::new(&buf, LittleEndian)),
         )
     }
@@ -297,7 +283,7 @@ impl SubsetTrie {
         let mask_len = buf.read_int::<u8>(8)?;
         let mask = buf.read_int::<u128>(mask_len as usize)?;
         let children = if buf.read_bool()? {
-            Some(alloc.alloc(SubsetTrieChildren([
+            Some(alloc.alloc(TrieChildren([
                 Self::deser_from_buf(alloc, buf)?,
                 Self::deser_from_buf(alloc, buf)?,
             ])))
@@ -317,73 +303,22 @@ impl SubsetTrie {
     }
 }
 
-/// Wrapper around `[SubsetTrie; 2]` for cache alignment.
+/// Wrapper around `[TrieNode; 2]` for cache alignment.
 #[derive(Debug, PartialEq, Eq)]
 #[repr(align(64))]
-struct SubsetTrieChildren([SubsetTrie; 2]);
+struct TrieChildren([TrieNode; 2]);
 
-impl Deref for SubsetTrieChildren {
-    type Target = [SubsetTrie; 2];
+impl Deref for TrieChildren {
+    type Target = [TrieNode; 2];
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl DerefMut for SubsetTrieChildren {
+impl DerefMut for TrieChildren {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
-    }
-}
-
-pub struct PruningTable<K>(HashMap<K, u8>);
-
-impl<K: Copy + Eq + Hash> PruningTable<K> {
-    pub fn make_pruning_table<S: Stage>(
-        solved: S,
-        get_key: impl Fn(S) -> K,
-        max_depth: u8,
-    ) -> Self {
-        let mut ret = HashMap::new();
-        ret.insert(get_key(solved), 0);
-        for depth in 1..=max_depth {
-            let mut queue = vec![(solved, 0)];
-            while let Some((state, d)) = queue.pop() {
-                let d = d + 1;
-                for twist in Twist::iter() {
-                    let new_state = state.do_twist(twist);
-                    if d == depth {
-                        ret.entry(get_key(new_state)).or_insert(d);
-                    } else {
-                        queue.push((new_state, d));
-                    }
-                }
-            }
-        }
-        Self(ret)
-    }
-}
-
-impl PruningTable<u32> {
-    pub fn make_s1_e_pruning_table(max_depth: u8) -> Self {
-        let mut ret = HashMap::new();
-        let init = Stage1::default();
-        ret.insert(init.e_p, 0);
-        for depth in 1..=max_depth {
-            let mut queue = vec![(init, 0)];
-            while let Some((state, d)) = queue.pop() {
-                let d = d + 1;
-                for twist in Twist::iter() {
-                    let new_state = state.do_twist(twist);
-                    if d == depth {
-                        ret.entry(new_state.e_p).or_insert(d);
-                    } else {
-                        queue.push((new_state, d));
-                    }
-                }
-            }
-        }
-        Self(ret)
     }
 }
 
@@ -391,18 +326,20 @@ impl PruningTable<u32> {
 mod tests {
     use super::*;
 
+    use crate::stages::Stage1;
+
     #[test]
     fn test_pruning_trie_ser_deser() {
-        let pruning_trie = SubsetTrie::new::<Stage1>(2);
+        let pruning_trie = TrieNode::new::<Stage1>(2);
         let serialized = pruning_trie.serialize();
-        let deserialized = SubsetTrie::deserialize(&serialized).unwrap();
+        let deserialized = TrieNode::deserialize(&serialized).unwrap();
         assert_eq!(deserialized, pruning_trie);
     }
 
     #[test]
     fn test_pruning_trie_determinism() {
-        let trie1 = SubsetTrie::new::<Stage1>(2);
-        let trie2 = SubsetTrie::new::<Stage1>(2);
+        let trie1 = TrieNode::new::<Stage1>(2);
+        let trie2 = TrieNode::new::<Stage1>(2);
         assert_eq!(trie1, trie2);
     }
 }

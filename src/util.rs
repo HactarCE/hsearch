@@ -30,6 +30,7 @@ pub fn is_permutation_odd(mut n: usize) -> bool {
 }
 
 /// Collects up to 64 booleans into a bitmask.
+#[cfg(test)]
 pub fn collect_bits(iter: impl IntoIterator<Item = bool>) -> u64 {
     iter.into_iter()
         .take(64)
