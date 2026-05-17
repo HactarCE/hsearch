@@ -29,7 +29,7 @@ pub fn solve(scramble: Vec<Twist>) -> Vec<Twist> {
     let solutions = iddfs(
         &init_options,
         |state, remaining_search_depth| {
-            remaining_search_depth <= PruningTables::S1_PPS_PRUNE_DEPTH
+            remaining_search_depth <= PruningTables::S1_PPSRO_PRUNE_DEPTH
                 && s1_pps_prune.query_should_prune(state.subset_trie_key(), remaining_search_depth)
         },
         6,

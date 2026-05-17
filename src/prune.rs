@@ -16,14 +16,14 @@ pub struct PruningTables {
 }
 
 impl PruningTables {
-    pub const S1_PPS_PRUNE_DEPTH: u8 = 4;
+    pub const S1_PPSRO_PRUNE_DEPTH: u8 = 4;
 }
 
 pub static PRUNING_TABLES: PruningTables = PruningTables {
     s1_pps: LazyLock::new(|| {
         crate::prune::SubsetTrie::make_or_load_pruning_table::<Stage1>(
-            PruningTables::S1_PPS_PRUNE_DEPTH,
-            "s1_pps",
+            PruningTables::S1_PPSRO_PRUNE_DEPTH,
+            "s1_ppsro",
         )
     }),
 };
