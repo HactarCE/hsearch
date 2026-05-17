@@ -33,7 +33,7 @@ pub fn solve(scramble: Vec<Twist>) -> Vec<Twist> {
                 0
             } else {
                 s1_pps_prune
-                    .lookup(s.subset_trie_key())
+                    .query(s.subset_trie_key())
                     .unwrap_or(PruningTables::S1_PPS_PRUNE_DEPTH + 1)
             }
         },
@@ -78,14 +78,14 @@ pub fn iddfs<S: Stage>(
         let count: usize = solutions.iter().map(|(_, list)| list.len()).sum();
         if count > 0 {
             println!("Found {count} solutions at depth {depth}:");
-            for (option_name, solution_list) in &solutions {
-                for sol in solution_list {
-                    println!(
-                        "  {option_name}        {}",
-                        crate::util::twists_to_string(sol)
-                    );
-                }
-            }
+            // for (option_name, solution_list) in &solutions {
+            //     for sol in solution_list {
+            //         println!(
+            //             "  {option_name}        {}",
+            //             crate::util::twists_to_string(sol)
+            //         );
+            //     }
+            // }
             return solutions
                 .into_iter()
                 .flat_map(|(_, sol_list)| sol_list)
