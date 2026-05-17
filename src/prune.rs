@@ -64,11 +64,11 @@ impl SubsetTrie {
 
     /// Inserts an entry if it is less than the existing entry.
     fn insert(&mut self, entry_key: u128, key_bits_remaining: u8, new_value: u8) {
-        if new_value < self.lower_bound {
-            self.lower_bound = new_value;
-        }
         let shared_bits = (entry_key ^ self.mask).trailing_zeros() as u8;
         if shared_bits >= self.mask_len {
+            if new_value < self.lower_bound {
+                self.lower_bound = new_value;
+            }
             match &mut self.children {
                 Some(children) => {
                     let child_bit = (entry_key >> self.mask_len) & 1;
@@ -252,11 +252,16 @@ impl SubsetTrie {
         } = self;
         buf.write_int(*mask_len, 8)?;
         buf.write_int(*mask, *mask_len as usize)?;
-        buf.write_int(*lower_bound, DEPTH_BITS)?;
         buf.write_bool(children.is_some())?;
         if let Some(children) = children {
             children[0].ser_to_buf(buf)?;
             children[1].ser_to_buf(buf)?;
+            assert_eq!(
+                *lower_bound,
+                children[0].lower_bound.min(children[1].lower_bound)
+            );
+        } else {
+            buf.write_int(*lower_bound, DEPTH_BITS)?;
         }
         Ok(())
     }
@@ -264,7 +269,6 @@ impl SubsetTrie {
     fn deser_from_buf(buf: &mut BitReadStream<'_, LittleEndian>) -> bitbuffer::Result<Self> {
         let mask_len = buf.read_int::<u8>(8)?;
         let mask = buf.read_int::<u128>(mask_len as usize)?;
-        let lower_bound = buf.read_int(DEPTH_BITS)?;
         let children = if buf.read_bool()? {
             Some(Box::new([
                 Self::deser_from_buf(buf)?,
@@ -272,6 +276,10 @@ impl SubsetTrie {
             ]))
         } else {
             None
+        };
+        let lower_bound = match &children {
+            Some(children) => std::cmp::min(children[0].lower_bound, children[1].lower_bound),
+            None => buf.read_int(DEPTH_BITS)?,
         };
         Ok(Self {
             mask_len,
