@@ -73,7 +73,8 @@ impl SubsetTrie {
                 Some(children) => {
                     let child_bit = (entry_key >> self.mask_len) & 1;
                     let child_key = (entry_key >> self.mask_len) >> 1;
-                    children[child_bit as usize].insert(child_key, key_bits_remaining, new_value);
+                    let child_bits_remaining = key_bits_remaining - self.mask_len - 1;
+                    children[child_bit as usize].insert(child_key, child_bits_remaining, new_value);
                 }
                 None => return,
             }
@@ -351,5 +352,12 @@ mod tests {
         let serialized = pruning_trie.serialize();
         let deserialized = SubsetTrie::deserialize(&serialized).unwrap();
         assert_eq!(deserialized, pruning_trie);
+    }
+
+    #[test]
+    fn test_pruning_trie_determinism() {
+        let trie1 = SubsetTrie::new::<Stage1>(2);
+        let trie2 = SubsetTrie::new::<Stage1>(2);
+        assert_eq!(trie1, trie2);
     }
 }
