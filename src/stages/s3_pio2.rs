@@ -135,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    fn lutgen_stage2() {
+    fn lutgen_stage3() {
         println!();
         println!("let Self {{ r_p, e_op_c_o }} = self;");
 
@@ -280,10 +280,6 @@ impl Stage for Stage3 {
                 },
             ),
         }
-    }
-
-    fn is_solved(self) -> bool {
-        todo!()
     }
 
     fn do_twist(self, twist: Twist) -> Self {

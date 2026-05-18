@@ -9,9 +9,6 @@ pub use s2_pio1::Stage2;
 pub use s3_pio2::Stage3;
 
 pub trait Stage: Send + Sync + std::fmt::Debug + Copy + Default + Eq {
-    /// Returns whether the stage is solved.
-    fn is_solved(self) -> bool;
-
     /// Applies a twist and returns the new state.
     #[must_use]
     fn do_twist(self, twist: Twist) -> Self;

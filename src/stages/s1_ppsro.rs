@@ -48,6 +48,10 @@ impl Stage1 {
     const TARGET_R_OP_MASK: u64 = 0x0000aaaaaffffaaa;
     const SOLVED_E_P: u32 = 0xfff00fff;
     const SOLVED_R_OP: u64 = 0x0000555000000555;
+
+    pub fn is_solved(self) -> bool {
+        self.e_p & Self::TARGET_E_P_MASK == 0 && self.r_op & Self::TARGET_R_OP_MASK == 0
+    }
 }
 
 #[cfg(test)]
@@ -118,10 +122,6 @@ impl SubsetMaskStage for Stage1 {
 }
 
 impl Stage for Stage1 {
-    fn is_solved(self) -> bool {
-        self.e_p & Self::TARGET_E_P_MASK == 0 && self.r_op & Self::TARGET_R_OP_MASK == 0
-    }
-
     fn do_twist(self, twist: Twist) -> Self {
         let Self { e_p, r_op } = self;
         let e_p = apply_permutation_lut!(u32, e_p, twist, [

@@ -356,10 +356,6 @@ impl Stage for Stage2 {
         }
     }
 
-    fn is_solved(self) -> bool {
-        todo!()
-    }
-
     fn do_twist(self, twist: Twist) -> Self {
         let Self { r_p, e_op, c_o } = self;
         let r_p = apply_permutation_lut!(u16, r_p, twist, [
