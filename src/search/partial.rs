@@ -26,7 +26,7 @@ pub fn dedup_partials(partials: &mut Vec<Partial>) {
     }
 
     if let Some(removed_count) = old_partial_count.checked_sub(new_partials.len()) {
-        println!("Removed {removed_count} duplicate solutions")
+        println!("Removed {removed_count} duplicate solutions");
     }
 
     *partials = new_partials;
@@ -50,7 +50,7 @@ pub struct Partial {
 
 impl fmt::Display for Partial {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", twists_to_string(&self.twists))
     }
 }
 
@@ -76,18 +76,12 @@ impl Partial {
         }
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
     /// Returns the number of twists in the solution.
     pub fn len(&self) -> usize {
         let &scramble_end = self.boundaries.get(1).unwrap_or(&self.twists.len());
         self.twists[scramble_end..].len()
     }
 
-    pub fn to_string(&self) -> String {
-        twists_to_string(&self.twists)
-    }
     pub fn to_string_ansi(&self) -> String {
         let mut ret = String::new();
         let mut segments = self

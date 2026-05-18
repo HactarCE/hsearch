@@ -109,19 +109,16 @@ impl TrieNode {
             if new_value < self.lower_bound {
                 self.lower_bound = new_value;
             }
-            match &mut self.children {
-                Some(children) => {
-                    let child_bit = (entry_key >> self.mask_len) & 1;
-                    let child_key = (entry_key >> self.mask_len) >> 1;
-                    let child_bits_remaining = key_bits_remaining - self.mask_len - 1;
-                    children[child_bit as usize].insert(
-                        alloc,
-                        child_key,
-                        child_bits_remaining,
-                        new_value,
-                    );
-                }
-                None => return,
+            if let Some(children) = &mut self.children {
+                let child_bit = (entry_key >> self.mask_len) & 1;
+                let child_key = (entry_key >> self.mask_len) >> 1;
+                let child_bits_remaining = key_bits_remaining - self.mask_len - 1;
+                children[child_bit as usize].insert(
+                    alloc,
+                    child_key,
+                    child_bits_remaining,
+                    new_value,
+                );
             }
         } else {
             let old_child_branch_bit = (self.mask >> shared_bits) & 1;
@@ -249,7 +246,7 @@ impl TrieNode {
     fn deserialize(buf: &[u8]) -> bitbuffer::Result<Self> {
         Self::deser_from_buf(
             super::thread_local_bump_allocator(),
-            &mut BitReadStream::new(BitReadBuffer::new(&buf, LittleEndian)),
+            &mut BitReadStream::new(BitReadBuffer::new(buf, LittleEndian)),
         )
     }
 

@@ -1,3 +1,4 @@
+use std::fmt;
 use std::ops::RangeInclusive;
 
 use itertools::Itertools;
@@ -12,7 +13,15 @@ use partial::Partial;
 
 const SOLUTIONS_TO_DISPLAY: usize = 1;
 
-pub fn solve(scramble: Vec<Twist>) -> Result<(), ()> {
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct NoSolution;
+impl fmt::Display for NoSolution {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "no solution")
+    }
+}
+
+pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     let s1_pps_prune = &*PRUNING_TABLES.s1_pps;
 
     let untransformed_partial = Partial::new(scramble);
@@ -75,7 +84,7 @@ fn cleanup_and_display_solutions(stage_name: &str, partials: &mut Vec<Partial>, 
     println!("Found {} partial solutions to {stage_name}", partials.len());
     if verbose {
         for (i, p) in partials.iter().enumerate() {
-            if i >= SOLUTIONS_TO_DISPLAY && i > 0 {
+            if i >= SOLUTIONS_TO_DISPLAY && SOLUTIONS_TO_DISPLAY > 0 {
                 let hidden_count = partials.len() - SOLUTIONS_TO_DISPLAY;
                 println!("... {hidden_count} solutions not shown");
                 break;
@@ -115,10 +124,9 @@ impl<SF, PF> Iddfs<SF, PF> {
     }
 
     /// Extends each partial using the minimum search depth necessary. Returns
-    /// `Ok(())` if successful, or `Err(())` if unsuccessful.
-    pub fn iddfs_extend<S>(&self, partials: &mut Vec<Partial>) -> Result<(), ()>
+    /// `Ok` if successful, or `Err` if unsuccessful.
+    pub fn iddfs_extend<S: Stage>(&self, partials: &mut Vec<Partial>) -> Result<(), NoSolution>
     where
-        S: Stage,
         SF: Sync + Fn(S) -> bool,
         PF: Sync + Fn(S, u8) -> bool,
     {
@@ -141,7 +149,7 @@ impl<SF, PF> Iddfs<SF, PF> {
                 return Ok(());
             }
         }
-        Err(())
+        Err(NoSolution)
     }
 
     /// Runs a depth-first search and records all solutions in `solutions`.
@@ -156,7 +164,6 @@ impl<SF, PF> Iddfs<SF, PF> {
         solution_buffer: &mut Vec<Twist>,
         solutions: &mut Vec<Vec<Twist>>,
     ) where
-        S: Stage,
         SF: Fn(S) -> bool,
         PF: Fn(S, u8) -> bool,
     {

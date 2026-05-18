@@ -5,7 +5,9 @@ fn main() {
     for i in 0..20 {
         let scramble = hsearch::scramble(i);
         // println!("{}", util::twists_to_string(&scramble));
-        let sol = hsearch::solve(scramble);
+        if hsearch::solve(scramble).is_err() {
+            println!("no solution!");
+        }
         // println!("{}", util::twists_to_string(&sol));
         println!();
     }

@@ -21,7 +21,7 @@ pub trait Stage: Copy + Default + std::fmt::Debug + Send + Sync {
     /// Panics if a twist is unrepresentable for this stage.
     fn with_setup(twists: &[Twist]) -> Self {
         twists
-            .into_iter()
+            .iter()
             .fold(Self::default(), |state, &twist| state.do_twist(twist))
     }
 }
