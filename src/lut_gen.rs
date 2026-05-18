@@ -7,8 +7,7 @@ use std::collections::HashMap;
 use itertools::Itertools;
 
 use crate::HYPERCUBE_TWISTS;
-use crate::Mat4;
-use crate::Vec4;
+use crate::prelude::*;
 
 /// Lookup table for permuting pieces.
 pub struct PermutationLut {
@@ -19,7 +18,8 @@ pub struct PermutationLut {
 
 impl PermutationLut {
     /// Generates a lookup table that permutes pieces according to each twist.
-    pub fn new(pieces: &[Vec4]) -> Self {
+    pub fn new(pieces: impl IntoIterator<Item = Vec4>) -> Self {
+        let pieces = pieces.into_iter().collect_vec();
         let point_to_index: HashMap<Vec4, usize> =
             pieces.iter().enumerate().map(|(i, &p)| (p, i)).collect();
         Self {
@@ -81,6 +81,13 @@ impl PermutationLut {
         s += "])";
         s
     }
+
+    /// Returns the twists supported by the permutation.
+    pub fn allowed_twists(&self) -> Vec<Twist> {
+        Twist::iter()
+            .filter(|t| self.table[t.to_index()].is_some())
+            .collect()
+    }
 }
 
 /// Lookup table for updating piece orientations.
@@ -93,7 +100,12 @@ pub struct OrientationLut {
 impl OrientationLut {
     /// Generates a lookup table that updates the orientation for each piece
     /// according to a twist.
-    pub fn new(pieces: &[Vec4], orientation_count: u8, act: impl Fn(Mat4, Vec4, u8) -> u8) -> Self {
+    pub fn new(
+        pieces: impl IntoIterator<Item = Vec4>,
+        orientation_count: u8,
+        act: impl Fn(Mat4, Vec4, u8) -> u8,
+    ) -> Self {
+        let pieces = pieces.into_iter().collect_vec();
         Self {
             table: HYPERCUBE_TWISTS
                 .iter()

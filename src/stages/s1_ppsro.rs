@@ -76,14 +76,11 @@ mod tests {
 
     #[test]
     fn lutgen_stage1() {
-        let edges = PieceType::Edge.iter().collect::<Vec<_>>();
-        let ridges = PieceType::Ridge.iter().collect::<Vec<_>>();
-
-        let lut1 = PermutationLut::new(&edges);
+        let lut1 = PermutationLut::new(PieceType::Edge.iter());
         println!("let e_p = {};", lut1.to_rust_code(32, 0, 1, "e_p"));
 
         let axis_order = [W, X, Y, Z];
-        let lut2 = OrientationLut::new(&ridges, 4, |r, v, o| {
+        let lut2 = OrientationLut::new(PieceType::Ridge.iter(), 4, |r, v, o| {
             match o {
                 0b00 | 0b11 => o, // P slice
                 0b10 | 0b01 => {
@@ -100,7 +97,7 @@ mod tests {
         });
         println!("let r_op = {};", lut2.to_rust_code(64, 0, 2, "r_op"));
 
-        let lut3 = PermutationLut::new(&ridges);
+        let lut3 = PermutationLut::new(PieceType::Ridge.iter());
         println!("let r_op = {};", lut3.to_rust_code(64, 0, 2, "r_op"));
     }
 }

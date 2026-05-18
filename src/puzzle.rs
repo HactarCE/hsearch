@@ -395,6 +395,59 @@ static NAME_TO_TWIST: LazyLock<HashMap<Vec<Facet>, TwistData>> = LazyLock::new(|
         .collect()
 });
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct SimplePuzzleSim {
+    /// For each current piece location: initial piece location, current attitude.
+    pieces: [(Vec4, Mat4); 81],
+}
+
+impl Default for SimplePuzzleSim {
+    fn default() -> Self {
+        Self {
+            pieces: Vec4::region(Vec4([-1; 4]), Vec4([1; 4]))
+                .map(|v| (v, IDENT))
+                .collect_array()
+                .unwrap(),
+        }
+    }
+}
+
+impl SimplePuzzleSim {
+    pub fn to_bits(
+        &self,
+        bits_per_piece: u8,
+        ty: PieceType,
+        mut filter_by_current_pos: impl FnMut(Vec4) -> bool,
+        mut map_init_pos_and_attitude: impl FnMut(Vec4, Mat4) -> u64,
+    ) -> u64 {
+        self.pieces
+            .into_iter()
+            .filter(|&(init, att)| {
+                init.taxicab_norm() == ty.sticker_count() && filter_by_current_pos(att * init)
+            })
+            .map(|(init, att)| map_init_pos_and_attitude(init, att))
+            .rfold(0, |a, b| (a << bits_per_piece) | b)
+    }
+
+    pub fn do_twist(self, twist: Twist) -> Self {
+        let twist_data = twist.data();
+        let mut new_state = self;
+        for (init, att) in self.pieces {
+            let cur = att * init;
+            let new_att = if twist_data.affects(cur) {
+                twist_data.rot * att
+            } else {
+                att
+            };
+            let new_loc = new_att * init;
+            let Vec4([x, y, z, w]) = new_loc + Vec4([1; 4]);
+            let index = (x + y * 3 + z * 9 + w * 27) as usize;
+            new_state.pieces[index] = (init, new_att);
+        }
+        new_state
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

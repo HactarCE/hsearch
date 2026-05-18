@@ -124,6 +124,7 @@ pub use prelude::*;
 
 /// Common imports.
 pub mod prelude {
+    pub use crate::canonical::PrevTwists;
     pub use crate::linalg::*;
     pub use crate::prune::*;
     pub use crate::puzzle::*;
@@ -133,4 +134,5 @@ pub mod prelude {
 pub const SCRAMBLE_LEN: usize = 50;
 
 pub use search::solve;
+pub use stages::*;
 pub use util::{parse_twists, scramble, twists_to_string};

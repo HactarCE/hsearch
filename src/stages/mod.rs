@@ -1,8 +1,10 @@
 use crate::prelude::*;
 
 mod s1_ppsro;
+mod s2_psio;
 
 pub use s1_ppsro::Stage1;
+pub use s2_psio::Stage2;
 
 pub trait Stage: Copy + Default + std::fmt::Debug + Send + Sync {
     /// Returns whether the stage is solved.

@@ -171,13 +171,11 @@ impl Vec4 {
         .map(|(w, z, y, x)| Vec4([x, y, z, w]))
     }
 
-    /// Returns the last nonzero axis in the vector, or `None` if the vector is
-    /// zero.
-    pub fn last_nonzero_axis(self) -> Option<Axis> {
-        self.0
-            .iter()
-            .rposition(|&x| x != 0)
-            .map(|i| Axis::from_u8(i as u8))
+    /// Returns a list of axes that are nonzero in the vector.
+    ///
+    /// Axes are returned in canonical order.
+    pub fn nonzero_axes(self) -> Vec<Axis> {
+        Axis::ALL.into_iter().filter(|&ax| self[ax] != 0).collect()
     }
 
     /// Returns the first axis from `order` that is nonzero in the vector, or
@@ -224,6 +222,13 @@ impl Mat4 {
             ret[ax1][ax2] = -1;
             ret[ax2][ax1] = 1;
         }
+        ret
+    }
+
+    /// Constructs a reflection through `axis`.
+    pub fn refl(axis: Axis) -> Mat4 {
+        let mut ret = IDENT;
+        ret[axis][axis] = -1;
         ret
     }
 

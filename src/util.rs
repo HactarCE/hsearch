@@ -44,9 +44,10 @@ pub fn collect_bits(iter: impl IntoIterator<Item = bool>) -> u64 {
 /// # Panics
 ///
 /// Panics if a twist is invalid.
-pub fn parse_twists(s: &str) -> Vec<TwistData> {
+pub fn parse_twists(s: &str) -> Vec<Twist> {
     s.split_ascii_whitespace()
         .map(|word| TwistData::from_notation(word).expect("invalid twist"))
+        .map(|data| crate::TWIST_DATA_TO_TWIST[&data])
         .collect()
 }
 
@@ -70,4 +71,16 @@ pub fn scramble(seed: u64) -> Vec<Twist> {
     std::iter::from_fn(|| Twist::iter().choose(&mut rng))
         .take(crate::SCRAMBLE_LEN)
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_twists_round_trip() {
+        for t in Twist::iter() {
+            assert_eq!(vec![t], parse_twists(&t.data().to_string()))
+        }
+    }
 }
