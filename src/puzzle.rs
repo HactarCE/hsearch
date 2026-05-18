@@ -416,16 +416,21 @@ impl SimplePuzzleSim {
     pub fn to_bits(
         &self,
         bits_per_piece: u8,
-        ty: PieceType,
-        mut filter_by_current_pos: impl FnMut(Vec4) -> bool,
-        mut map_init_pos_and_attitude: impl FnMut(Vec4, Mat4) -> u64,
+        piece_types: &[PieceType],
+        filter_by_current_pos: impl Fn(Vec4) -> bool,
+        map_init_pos_and_attitude: impl Fn(Vec4, Mat4) -> u64,
     ) -> u64 {
-        self.pieces
-            .into_iter()
-            .filter(|&(init, att)| {
-                init.taxicab_norm() == ty.sticker_count() && filter_by_current_pos(att * init)
+        piece_types
+            .iter()
+            .flat_map(|ty| {
+                self.pieces
+                    .into_iter()
+                    .filter(|&(init, att)| {
+                        init.taxicab_norm() == ty.sticker_count()
+                            && filter_by_current_pos(att * init)
+                    })
+                    .map(|(init, att)| map_init_pos_and_attitude(init, att))
             })
-            .map(|(init, att)| map_init_pos_and_attitude(init, att))
             .rfold(0, |a, b| (a << bits_per_piece) | b)
     }
 

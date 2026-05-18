@@ -72,7 +72,38 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
         1..=4,
     )
     .iddfs_extend(&mut partials)?;
-    cleanup_and_display_solutions("stage 2.3", &mut partials, true);
+    cleanup_and_display_solutions("stage 2.3", &mut partials, false);
+
+    // Normalize so that the block is on `I`
+    for partial in &mut partials {
+        if Stage2::with_setup(&partial.twists)
+            .which_target3()
+            .expect("bad solution")
+            == Sign::Neg
+        {
+            *partial = partial.transform_by(Mat4::refl(W));
+        }
+    }
+
+    println!("Stage 3.1");
+    Iddfs::new::<Stage3>(
+        &Stage3::TWISTS,
+        |s| s.is_target_solved(Stage3::TARGET1),
+        |_, _| false,
+        1..=4,
+    )
+    .iddfs_extend(&mut partials)?;
+    cleanup_and_display_solutions("stage 3.1", &mut partials, false);
+
+    println!("Stage 3.2");
+    Iddfs::new::<Stage3>(
+        &Stage3::TWISTS,
+        |s| s.is_target_solved(Stage3::TARGET2),
+        |_, _| false,
+        1..=4,
+    )
+    .iddfs_extend(&mut partials)?;
+    cleanup_and_display_solutions("stage 3.2", &mut partials, true);
 
     Ok(())
 }
@@ -144,7 +175,9 @@ impl<SF, PF> Iddfs<SF, PF> {
                         .collect_vec()
                 })
                 .collect();
-            if !new_partials.is_empty() {
+            if new_partials.len() >= 100
+                || depth + 1 >= *self.depth_range.end() && !new_partials.is_empty()
+            {
                 *partials = new_partials;
                 return Ok(());
             }

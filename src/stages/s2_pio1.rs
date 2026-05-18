@@ -2,16 +2,16 @@ use std::ops::BitAnd;
 
 use super::*;
 
-/// Stage 2: P separation + I/O edge & corner orientation
+/// Stage 2: partial I/O edge & corner orientation (3x3x2x1 block)
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Stage2 {
-    /// For each ridge, 1 bit indicating one of the following cases:
+    /// For each I/O/F ridge, 1 bit indicating one of the following cases:
     ///
     /// - `0` = belongs in the P slice
     /// - `1` = belongs in I/O
     pub r_p: u16, // u16
 
-    /// For each edge, 2 bits indicating one of the following cases:
+    /// For each I/O/F edge, 2 bits indicating one of the following cases:
     ///
     /// - `00` = belongs in P slice, any orientation
     /// - `01` = belongs in I/O, good orientation
@@ -19,7 +19,8 @@ pub struct Stage2 {
     /// - `11` = belongs in I/O, bad orientation 2
     pub e_op: u64, // u56
 
-    /// For each corner, 2 bits indicating the axis containing its I/O sticker:
+    /// For each I/O/F corner, 2 bits indicating the axis containing its I/O
+    /// sticker:
     ///
     /// - `00` = X
     /// - `01` = Y
@@ -73,19 +74,33 @@ impl Stage2 {
     ];
     pub const TARGET2: &[Self] = &[
         Self::new(0x000f, 0x0000000000000f3f, 0x0000000f),
+        Self::new(0x0017, 0x00000000000033cf, 0x00000033),
+        Self::new(0x001b, 0x000000000000ccf3, 0x000000cc),
         Self::new(0x001d, 0x000000000000f0fc, 0x000000f0),
+        Self::new(0x0027, 0x00000000000f030f, 0x00000303),
+        Self::new(0x002b, 0x0000000000330c33, 0x00000c0c),
         Self::new(0x002e, 0x00000000003f0f00, 0x00000f00),
+        Self::new(0x0035, 0x0000000000cc30cc, 0x00003030),
+        Self::new(0x0036, 0x0000000000cf3300, 0x00003300),
+        Self::new(0x0039, 0x0000000000f0c0f0, 0x0000c0c0),
+        Self::new(0x003a, 0x0000000000f3cc00, 0x0000cc00),
         Self::new(0x003c, 0x0000000000fcf000, 0x0000f000),
         Self::new(0x3c00, 0x00000f3f00000000, 0x000f0000),
+        Self::new(0x5c00, 0x000033cf00000000, 0x00330000),
+        Self::new(0x6c00, 0x0000ccf300000000, 0x00cc0000),
         Self::new(0x7400, 0x0000f0fc00000000, 0x00f00000),
+        Self::new(0x9c00, 0x000f030f00000000, 0x03030000),
+        Self::new(0xac00, 0x00330c3300000000, 0x0c0c0000),
         Self::new(0xb800, 0x003f0f0000000000, 0x0f000000),
+        Self::new(0xd400, 0x00cc30cc00000000, 0x30300000),
+        Self::new(0xd800, 0x00cf330000000000, 0x33000000),
+        Self::new(0xe400, 0x00f0c0f000000000, 0xc0c00000),
+        Self::new(0xe800, 0x00f3cc0000000000, 0xcc000000),
         Self::new(0xf000, 0x00fcf00000000000, 0xf0000000),
     ];
     pub const TARGET3: &[Self] = &[
         Self::new(0x001f, 0x000000000000ffff, 0x000000ff),
-        Self::new(0x003e, 0x0000000000ffff00, 0x0000ff00),
         Self::new(0x7c00, 0x0000ffff00000000, 0x00ff0000),
-        Self::new(0xf800, 0x00ffff0000000000, 0xff000000),
     ];
 
     const fn new(r_p: u16, e_op: u64, c_o: u32) -> Self {
@@ -96,14 +111,11 @@ impl Stage2 {
         target.iter().any(|&t| self & t == Self::SOLVED & t)
     }
 
-    pub fn good_ridges(self) -> u8 {
-        (self.r_p & Self::SOLVED.r_p).count_ones() as u8
-    }
-    pub fn good_edges(self) -> u8 {
-        (self.e_op & !(self.e_op >> 1) & Self::SOLVED.e_op).count_ones() as u8
-    }
-    pub fn good_corners(self) -> u8 {
-        (self.c_o & self.c_o >> 1 & 0x5555_5555).count_ones() as u8
+    pub fn which_target3(self) -> Option<Sign> {
+        Self::TARGET3
+            .iter()
+            .position(|t| self.is_target_solved(std::slice::from_ref(t)))
+            .map(|i| [Sign::Pos, Sign::Neg][i])
     }
 }
 
@@ -113,7 +125,7 @@ mod tests {
 
     use super::*;
 
-    use crate::lut_gen::*;
+    use crate::{group::Group, lut_gen::*, util::collect_bits};
 
     fn ridges() -> impl Iterator<Item = Vec4> {
         PieceType::Ridge.iter().filter(|v| v[W] != 0 || v[Z] == 1)
@@ -130,22 +142,24 @@ mod tests {
         println!();
 
         println!("pub const SOLVED: Self = Self {{");
-        let m = crate::util::collect_bits(ridges().map(|v| v[W] != 0));
+        let m = collect_bits(ridges().map(|v| v[W] != 0));
         println!("    r_p: 0x{m:04x},");
-        let m = crate::util::collect_bits(edges().flat_map(|v| [v[W] != 0, false]));
+        let m = collect_bits(edges().flat_map(|v| [v[W] != 0, false]));
         println!("    e_op: 0x{m:016x},");
-        let m = crate::util::collect_bits(corners().flat_map(|_| [true, true]));
+        let m = collect_bits(corners().flat_map(|_| [true, true]));
         println!("    c_o: 0x{m:08x},");
         println!("}};");
         println!();
 
-        let target_blocks: [fn(Vec4) -> bool; _] = [
-            |v| v[X] <= 0 && v[Y] <= 0 && v[Z] <= 0 && v[W] < 0, // 2x2x2x1
-            |v| v[Y] <= 0 && v[Z] <= 0 && v[W] < 0,              // 3x2x2x1
-            |v| v[Z] <= 0 && v[W] < 0,                           // 3x3x2x1
+        let full_sym = Group::new(vec![Mat4::rot(X, Y), Mat4::rot(X, Z), Mat4::refl(W)]);
+        let w_sym = Group::new(vec![Mat4::refl(W)]);
+        #[rustfmt::skip]
+        let target_blocks: [(&Group, fn(Vec4) -> bool); _] = [
+            (&full_sym, |v| v[X] <= 0 && v[Y] <= 0 && v[Z] <= 0 && v[W] < 0), // 2x2x2x1
+            (&full_sym, |v|              v[Y] <= 0 && v[Z] <= 0 && v[W] < 0), // 3x2x2x1
+            (&w_sym,    |v|                           v[Z] <= 0 && v[W] < 0), // 3x3x2x1
         ];
-        let symmetry = crate::group::Group::new(Axis::ALL.map(Mat4::refl).to_vec());
-        for (i, block_predicate) in target_blocks.into_iter().enumerate() {
+        for (i, (symmetry, block_predicate)) in target_blocks.into_iter().enumerate() {
             println!("pub const TARGET{}: &[Self] = &[", i + 1);
             symmetry
                 .elems()
@@ -210,7 +224,7 @@ mod tests {
         println!(
             "pub const TWISTS: [Twist; {}] = {:?};",
             twists.len(),
-            twists
+            twists,
         );
         println!();
     }
@@ -310,13 +324,13 @@ impl Stage for Stage2 {
         Self {
             r_p: state.to_bits(
                 1,
-                PieceType::Ridge,
+                &[PieceType::Ridge],
                 |v| v[W] != 0 || v[Z] == 1,
                 |init, _att| (init[W] != 0) as u64,
             ) as u16,
             e_op: state.to_bits(
                 2,
-                PieceType::Edge,
+                &[PieceType::Edge],
                 |v| v[W] != 0 || v[Z] == 1,
                 |init, att| {
                     if init[W] == 0 {
@@ -335,7 +349,7 @@ impl Stage for Stage2 {
             ),
             c_o: state.to_bits(
                 2,
-                PieceType::Corner,
+                &[PieceType::Corner],
                 |_| true,
                 |_init, att| W.transform_by(att) as u64,
             ) as u32,
@@ -343,7 +357,7 @@ impl Stage for Stage2 {
     }
 
     fn is_solved(self) -> bool {
-        self == Self::default()
+        todo!()
     }
 
     fn do_twist(self, twist: Twist) -> Self {

@@ -5,6 +5,7 @@ use crate::{prelude::*, twists_to_string};
 pub fn dedup_partials(partials: &mut Vec<Partial>) {
     let old_partial_count = partials.len();
 
+    // TODO: also account for PrevTwists
     let mut state_to_index = HashMap::<SimplePuzzleSim, usize>::new();
     let mut new_partials: Vec<Partial> = vec![];
     for p in std::mem::take(partials) {
@@ -25,7 +26,9 @@ pub fn dedup_partials(partials: &mut Vec<Partial>) {
         }
     }
 
-    if let Some(removed_count) = old_partial_count.checked_sub(new_partials.len()) {
+    if let Some(removed_count) = old_partial_count.checked_sub(new_partials.len())
+        && removed_count > 0
+    {
         println!("Removed {removed_count} duplicate solutions");
     }
 
