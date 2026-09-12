@@ -9,10 +9,7 @@ pub fn dedup_partials(partials: &mut Vec<Partial>) {
     let mut state_to_index = HashMap::<SimplePuzzleSim, usize>::new();
     let mut new_partials: Vec<Partial> = vec![];
     for p in std::mem::take(partials) {
-        let state = p
-            .twists
-            .iter()
-            .fold(SimplePuzzleSim::default(), |s, &t| s.do_twist(t));
+        let state = SimplePuzzleSim::with_setup(p.twists.iter().copied());
         match state_to_index.entry(state) {
             std::collections::hash_map::Entry::Occupied(e) => {
                 if p.len() < new_partials[*e.get()].len() {

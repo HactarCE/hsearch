@@ -21,14 +21,26 @@ pub trait Stage: Send + Sync + std::fmt::Debug + Copy + Default + Eq {
 
     /// Returns a state with a given scramble.
     ///
+    /// The default implementation applies the twists to a [`SimplePuzzleSim`]
+    /// and then calls [`Self::from_state()`].
+    ///
     /// # Panics
     ///
     /// Panics if a twist is unrepresentable for this stage.
     fn with_setup(twists: &[Twist]) -> Self {
-        twists
-            .iter()
-            .fold(Self::default(), |state, &twist| state.do_twist(twist))
+        let mut state = SimplePuzzleSim::default();
+        for &twist in twists {
+            state = state.do_twist(twist);
+        }
+        Self::from_state(state)
     }
+
+    /// Converts a state into the stage representation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the puzzle state does not satisfy the invariants of the stage.
+    fn from_state(state: SimplePuzzleSim) -> Self;
 }
 
 pub trait SubsetMaskStage: Stage {
@@ -45,12 +57,27 @@ pub trait SubsetMaskStage: Stage {
 #[cfg(test)]
 mod tests {
     use itertools::Itertools;
+    use pretty_assertions::assert_eq;
     use rand::{SeedableRng, seq::IndexedRandom};
+
+    use crate::parse_twists;
 
     use super::*;
 
     #[test]
-    fn test_stage3_setup() {
+    fn test_all_stage_defaults() {
+        test_stage_default::<Stage1>();
+        test_stage_default::<Stage2>();
+        test_stage_default::<Stage3>();
+    }
+
+    fn test_stage_default<S: Stage>() {
+        assert_eq!(S::default(), S::from_state(SimplePuzzleSim::default()));
+        assert_eq!(S::default(), S::with_setup(&[]));
+    }
+
+    #[test]
+    fn test_all_stage_setups() {
         test_stage_setup::<Stage1>(&Twist::iter().collect_vec());
         test_stage_setup::<Stage2>(&Stage2::TWISTS);
         test_stage_setup::<Stage3>(&Stage3::TWISTS);

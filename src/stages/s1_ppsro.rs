@@ -54,6 +54,30 @@ impl Stage1 {
     }
 }
 
+/// Returns the new orientation for a ridge.
+///
+/// - `r` = Rotation matrix to apply
+/// - `v` = Old position
+/// - `o` = Old orientation bits (just lowest 2 bits)
+fn new_ridge_orientation(r: Mat4, v: Vec4, o: u8) -> u8 {
+    /// Canonical axis order for determining ridge orientation.
+    const RO_AXIS_ORDER: [Axis; 4] = [W, X, Y, Z];
+
+    match o {
+        0b00 | 0b11 => o, // P slice
+        0b10 | 0b01 => {
+            let old_axis = v.unwrap_first_nonzero_axis(RO_AXIS_ORDER);
+            let new_axis = (r * v).unwrap_first_nonzero_axis(RO_AXIS_ORDER);
+            if (r * old_axis.unit()).unwrap_single_axis() == new_axis {
+                o
+            } else {
+                o ^ 0b11
+            }
+        }
+        _ => unreachable!(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -80,29 +104,20 @@ mod tests {
 
     #[test]
     fn lutgen_stage1() {
+        println!();
+        println!("let Self {{ e_p, r_op }} = self;");
+
         let lut1 = PermutationLut::new(PieceType::Edge.iter());
         println!("let e_p = {};", lut1.to_rust_code(32, 0, 1, "e_p"));
 
-        let axis_order = [W, X, Y, Z];
-        let lut2 = OrientationLut::new(PieceType::Ridge.iter(), 4, |r, v, o| {
-            match o {
-                0b00 | 0b11 => o, // P slice
-                0b10 | 0b01 => {
-                    let old_axis = v.unwrap_first_nonzero_axis(axis_order);
-                    let new_axis = (r * v).unwrap_first_nonzero_axis(axis_order);
-                    if (r * old_axis.unit()).unwrap_single_axis() == new_axis {
-                        o
-                    } else {
-                        o ^ 0b11
-                    }
-                }
-                _ => unreachable!(),
-            }
-        });
+        let lut2 = OrientationLut::new(PieceType::Ridge.iter(), 4, new_ridge_orientation);
         println!("let r_op = {};", lut2.to_rust_code(64, 0, 2, "r_op"));
 
         let lut3 = PermutationLut::new(PieceType::Ridge.iter());
         println!("let r_op = {};", lut3.to_rust_code(64, 0, 2, "r_op"));
+
+        println!("Self {{ e_p, r_op }}");
+        println!();
     }
 }
 
@@ -122,6 +137,23 @@ impl SubsetMaskStage for Stage1 {
 }
 
 impl Stage for Stage1 {
+    fn from_state(state: SimplePuzzleSim) -> Self {
+        Self {
+            e_p: state.to_bits(
+                1,
+                &[PieceType::Edge],
+                |_| true,
+                |init, _att| (init[W] != 0) as u64,
+            ) as u32,
+            r_op: state.to_bits(
+                2,
+                &[PieceType::Ridge],
+                |_| true,
+                |init, att| new_ridge_orientation(att, init, (init[W] != 0) as u8) as u64,
+            ),
+        }
+    }
+
     fn do_twist(self, twist: Twist) -> Self {
         let Self { e_p, r_op } = self;
         let e_p = apply_permutation_lut!(u32, e_p, twist, [

@@ -425,6 +425,10 @@ impl Default for SimplePuzzleSim {
 }
 
 impl SimplePuzzleSim {
+    pub fn with_setup(twists: impl IntoIterator<Item = Twist>) -> Self {
+        twists.into_iter().fold(Self::default(), Self::do_twist)
+    }
+
     pub fn to_bits(
         &self,
         bits_per_piece: u8,
@@ -446,6 +450,7 @@ impl SimplePuzzleSim {
             .rfold(0, |a, b| (a << bits_per_piece) | b)
     }
 
+    #[must_use]
     pub fn do_twist(self, twist: Twist) -> Self {
         let twist_data = twist.data();
         let mut new_state = self;
@@ -456,12 +461,25 @@ impl SimplePuzzleSim {
             } else {
                 att
             };
-            let new_loc = new_att * init;
-            let Vec4([x, y, z, w]) = new_loc + Vec4([1; 4]);
-            let index = (x + y * 3 + z * 9 + w * 27) as usize;
-            new_state.pieces[index] = (init, new_att);
+            new_state.set_piece(init, new_att);
         }
         new_state
+    }
+
+    #[must_use]
+    pub fn do_full_puzzle_rotation(self, rot: Mat4) -> Self {
+        let mut new_state = self;
+        for (init, att) in self.pieces {
+            new_state.set_piece(init, rot * att);
+        }
+        new_state
+    }
+
+    fn set_piece(&mut self, init: Vec4, att: Mat4) {
+        let loc = att * init;
+        let Vec4([x, y, z, w]) = loc + Vec4([1; 4]);
+        let index = (x + y * 3 + z * 9 + w * 27) as usize;
+        self.pieces[index] = (init, att);
     }
 }
 

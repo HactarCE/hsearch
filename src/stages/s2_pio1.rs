@@ -316,11 +316,7 @@ impl Stage2 {
 }
 
 impl Stage for Stage2 {
-    fn with_setup(twists: &[Twist]) -> Self {
-        let state = twists
-            .iter()
-            .copied()
-            .fold(SimplePuzzleSim::default(), SimplePuzzleSim::do_twist);
+    fn from_state(state: SimplePuzzleSim) -> Self {
         Self {
             r_p: state.to_bits(
                 1,
