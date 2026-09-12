@@ -321,16 +321,20 @@ impl DerefMut for TrieChildren {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     use crate::stages::Stage1;
 
     #[test]
     fn test_pruning_trie_ser_deser() {
-        let pruning_trie = TrieNode::new::<Stage1>(2);
-        let serialized = pruning_trie.serialize();
-        let deserialized = TrieNode::deserialize(&serialized).unwrap();
-        assert_eq!(deserialized, pruning_trie);
+        for depth in 1..=2 {
+            let pruning_trie = TrieNode::new::<Stage1>(depth);
+            let serialized = pruning_trie.serialize();
+            let deserialized = TrieNode::deserialize(&serialized).unwrap();
+            assert_eq!(deserialized, pruning_trie);
+        }
     }
 
     #[test]
