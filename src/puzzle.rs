@@ -129,7 +129,7 @@ impl Facet {
     /// # Panics
     ///
     /// Panics if `i >= 8`.
-    pub fn from_u8(i: u8) -> Self {
+    pub const fn from_u8(i: u8) -> Self {
         match i {
             0 => R,
             1 => L,
@@ -151,6 +151,11 @@ impl Facet {
     /// Returns the negative facet on an axis.
     pub const fn neg(axis: Axis) -> Self {
         Self::new(axis, Sign::Neg)
+    }
+
+    /// Returns the opposite facet on the same axis.
+    pub const fn opposite(self) -> Self {
+        Self::from_u8(self as u8 ^ 1)
     }
 
     /// Returns the axis of the facet.
@@ -322,7 +327,14 @@ impl TwistData {
             return None;
         }
         facets_list[1..].sort(); // canonicalize
-        let mut unit_twist = *NAME_TO_TWIST.get(&facets_list)?;
+        let mut unit_twist = *NAME_TO_TWIST.get(&facets_list).or_else(|| {
+            // Try opposite names (e.g., DFLO -> DBRI')
+            for f in &mut facets_list[1..] {
+                *f = f.opposite();
+            }
+            multiplier *= -1;
+            NAME_TO_TWIST.get(&facets_list)
+        })?;
         if multiplier != 1 {
             unit_twist.rot = unit_twist.rot.pow(multiplier);
         }
