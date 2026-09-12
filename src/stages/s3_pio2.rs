@@ -2,23 +2,61 @@ use std::ops::BitAnd;
 
 use super::*;
 
-/// Stage 3: partial I/O edge & corner orientation (3x2x2x1 block)
+/// Stage 3: partial `I`/`O` edge & corner orientation (3x2x2x1 block)
+///
+/// ## Invariants
+///
+/// - All `I`/`O` ridges must remain oriented.
+/// - The 3x3x2x2 block of pieces at `[-1, -1, -1, -1]..=[1, 1, 0, 0]` (i.e.,
+///   `~(F | O)`) must be setwise-preserved and remain oriented & `P`-separated.
+///     - The 3x3x2x1 subblock in the `P` slice must be setwise-preserved
+///     - The 3x3x2x1 subblock in the `I` layer must be setwise-preserved and
+///       remain oriented.
+///
+/// ## Move set
+///
+/// 46 twists are allowed:
+///
+/// - All `F` and `O` twists
+///
+/// ## Targets
+///
+/// ### Target 1
+///
+/// - 2x2x2x1 block of `I`/`O`-oriented pieces in `O` (`[-1, -1, -1, 1]..=[0, 0,
+///   0, 1]`)
+///     - 3 ridges (already oriented from stage 1)
+///     - 3 oriented `I`/`O` edges
+///     - 1 oriented corner
+///
+/// This target has 4 possible orientations.
+///
+/// ### Target 2
+///
+/// - 3x2x2x1 block of `I`/`O`-oriented pieces in `O` (`[-1, -1, -1, 1]..=[1, 0,
+///   0, 1]`)
+///     - 4 ridges (already oriented from stage 1)
+///     - 5 oriented `I`/`O` edges
+///     - 2 oriented corners
+///
+/// This target has 4 possible orientations relative to the invariant block on
+/// `P`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Stage3 {
-    /// For each O/F ridge, 1 bit indicating one of the following cases:
+    /// For each F/O ridge, 1 bit indicating one of the following cases:
     ///
     /// - `0` = belongs in the P slice
     /// - `1` = belongs in I/O
     pub r_p: u16, // u11
 
-    /// For each O/F edge, 2 bits indicating one of the following cases:
+    /// For each F/O edge, 2 bits indicating one of the following cases:
     ///
     /// - `00` = belongs in P slice, any orientation
     /// - `01` = belongs in I/O, good orientation
     /// - `10` = belongs in I/O, bad orientation 1
     /// - `11` = belongs in I/O, bad orientation 2
     ///
-    /// For each O/F corner, 2 bits indicating the axis containing its I/O
+    /// For each F/O corner, 2 bits indicating the axis containing its I/O
     /// sticker:
     ///
     /// - `00` = X

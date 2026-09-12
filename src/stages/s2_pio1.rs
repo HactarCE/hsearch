@@ -2,16 +2,64 @@ use std::ops::BitAnd;
 
 use super::*;
 
-/// Stage 2: partial I/O edge & corner orientation (3x3x2x1 block)
+/// Stage 2: partial `I`/`O` edge & corner orientation (3x3x2x1 block)
+///
+/// ## Invariants
+///
+/// - All `I`/`O` ridges must remain oriented.
+/// - The 3x3x2x1 block of `P` pieces in `P` at `[-1, -1, -1, 0]..=[1, 1, 0, 0]`
+///   (i.e., `~(F | O | I)`) must be setwise-preserved.
+///
+/// ## Move set
+///
+/// 80 twists are allowed:
+///
+/// - All `F`, `I`, and `O` twists (69 twists)
+/// - `RF2`, `LF2`, `UF2`, and `DF2` (4 twists)
+/// - `BO`, `BO2`, and `BI` (3 twists)
+/// - `BR2`, `BU2`, `BUR`, and `BUL` (4 twists)
+///
+/// ## Targets
+///
+/// ### Target 1
+///
+/// - 2x2x2x1 block of `I`/`O`-oriented pieces in `I` (`[-1, -1, -1, -1]..=[0,
+///   0, 0, -1]`)
+///     - 3 ridges (already oriented from stage 1)
+///     - 3 oriented `I`/`O` edges
+///     - 1 oriented corner
+///
+/// This target has 16 possible orientations.
+///
+/// ### Target 2
+///
+/// - 3x2x2x1 block of `I`/`O`-oriented pieces in `I` (`[-1, -1, -1, -1]..=[1,
+///   0, 0, -1]`)
+///     - 4 ridges (already oriented from stage 1)
+///     - 5 oriented `I`/`O` edges
+///     - 2 oriented corners
+///
+/// This target has 24 possible orientations.
+///
+/// ### Target 3
+///
+/// - 3x3x2x1 block of `I`/`O`-oriented pieces in `I` (`[-1, -1, -1, -1]..=[1,
+///   1, 0, -1]`)
+///     - 5 ridges (already oriented from stage 1)
+///     - 8 oriented `I`/`O` edges
+///     - 4 oriented corners
+///
+/// This target has 2 possible orientations relative to the invariant block on
+/// `P`: the new block may be on `I` or it may be on `O`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Stage2 {
-    /// For each I/O/F ridge, 1 bit indicating one of the following cases:
+    /// For each F/O/I ridge, 1 bit indicating one of the following cases:
     ///
     /// - `0` = belongs in the P slice
     /// - `1` = belongs in I/O
     pub r_p: u16, // u16
 
-    /// For each I/O/F edge, 2 bits indicating one of the following cases:
+    /// For each F/O/I edge, 2 bits indicating one of the following cases:
     ///
     /// - `00` = belongs in P slice, any orientation
     /// - `01` = belongs in I/O, good orientation
@@ -19,7 +67,7 @@ pub struct Stage2 {
     /// - `11` = belongs in I/O, bad orientation 2
     pub e_op: u64, // u56
 
-    /// For each I/O/F corner, 2 bits indicating the axis containing its I/O
+    /// For each F/O/I corner, 2 bits indicating the axis containing its I/O
     /// sticker:
     ///
     /// - `00` = X
@@ -111,10 +159,11 @@ impl Stage2 {
         target.iter().any(|&t| self & t == Self::SOLVED & t)
     }
 
+    /// Returns the sign of the unsolved facet.
     pub fn which_target3(self) -> Option<Sign> {
         Self::TARGET3
             .iter()
-            .position(|t| self.is_target_solved(std::slice::from_ref(t)))
+            .position(|&t| self.is_target_solved(&[t]))
             .map(|i| [Sign::Pos, Sign::Neg][i])
     }
 }

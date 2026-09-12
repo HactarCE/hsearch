@@ -1,6 +1,24 @@
 use super::*;
 
-/// Stage 1: Partial P separation (3x3x2x1 block) + I/O ridge orientation
+/// Stage 1: Partial `P` separation (3x3x2x1 block) + `I`/`O` ridge orientation
+///
+/// ## Invariants
+///
+/// There are no invariants to uphold.
+///
+/// ## Move set
+///
+/// All 184 twists are allowed.
+///
+/// ## Target
+///
+/// - 3x3x2x1 block of `P` pieces in `P` at `[-1, -1, -1, 0]..=[1, 1, 0, 0]`
+///   (i.e., `~(F | O | I)`)
+/// - I/O 2c pieces are oriented
+///
+/// This target has 12 possible orientations but, because we try all possible
+/// orientations of the scramble, only one orientation of the target needs to be
+/// checked.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Stage1 {
     /// For each edge, 1 bit indicating one of the following cases:
