@@ -2,6 +2,7 @@ use std::fmt;
 use std::ops::RangeInclusive;
 
 use itertools::Itertools;
+use rayon::iter::IntoParallelRefMutIterator;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::prelude::*;
@@ -22,7 +23,8 @@ impl fmt::Display for NoSolution {
 }
 
 pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
-    let s1_pps_prune = &*PRUNING_TABLES.s1_pps;
+    let s1_prune = &*PRUNING_TABLES.s1_ppsro;
+    let s4_prune = &*PRUNING_TABLES.s4_psio;
 
     let untransformed_partial = Partial::new(scramble);
 
@@ -38,7 +40,7 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     Iddfs::new::<Stage1>(
         &Twist::iter().collect_vec(),
         |s| s.is_solved(),
-        |s, d| s1_pps_prune.query_should_prune(s.subset_trie_key(), d),
+        |s, d| s1_prune.query_should_prune(s.subset_trie_key(), d),
         3..=6,
     )
     .iddfs_extend(&mut partials)?;
@@ -75,7 +77,7 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     cleanup_and_display_solutions("stage 2.3", &mut partials, false);
 
     // Normalize so that the block is on `I`
-    for partial in &mut partials {
+    partials.par_iter_mut().for_each(|partial| {
         if Stage2::with_setup(&partial.twists)
             .which_target3()
             .expect("bad solution")
@@ -83,7 +85,7 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
         {
             *partial = partial.transform_by(Mat4::refl(W));
         }
-    }
+    });
 
     println!("Stage 3.1");
     Iddfs::new::<Stage3>(
@@ -103,7 +105,28 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
         1..=4,
     )
     .iddfs_extend(&mut partials)?;
+
+    // Normalize so that unsolved `I`/`O` region is on `UO`.
+    partials.par_iter_mut().for_each(|partial| {
+        let secondary_facet = Stage3::with_setup(&partial.twists)
+            .which_target2()
+            .expect("bad solution");
+        if secondary_facet != Facet::U {
+            *partial = partial.transform_by(secondary_facet.mat4_to(U));
+        }
+    });
+
     cleanup_and_display_solutions("stage 3.2", &mut partials, true);
+
+    println!("Stage 4");
+    Iddfs::new::<Stage4>(
+        &Stage4::TWISTS,
+        |s| s.is_target_solved(Stage4::SOLVED),
+        |s, d| s4_prune.query_should_prune(s.key(), d),
+        1..=13,
+    )
+    .iddfs_extend(&mut partials)?;
+    cleanup_and_display_solutions("stage 4", &mut partials, true);
 
     Ok(())
 }
@@ -127,6 +150,9 @@ fn cleanup_and_display_solutions(stage_name: &str, partials: &mut Vec<Partial>, 
 }
 
 /// Iterative-deepening depth-first search parameters.
+///
+/// - `SF` = solved function ("Is this state solved?")
+/// - `PF` = prune function ("Should this state be pruned?")
 pub struct Iddfs<SF, PF> {
     twist_subset: Vec<Twist>,
     is_solved: SF,
@@ -171,7 +197,7 @@ impl<SF, PF> Iddfs<SF, PF> {
                     self.dfs(init, PrevTwists::new(), depth, &mut vec![], &mut solutions);
                     solutions
                         .into_iter()
-                        .map(|new_segment| partial.extend(&new_segment))
+                        .map(|new_segment| partial.extend::<S>(&new_segment))
                         .collect_vec()
                 })
                 .collect();

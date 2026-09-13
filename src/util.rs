@@ -46,7 +46,10 @@ pub fn collect_bits(iter: impl IntoIterator<Item = bool>) -> u64 {
 /// Panics if a twist is invalid.
 pub fn parse_twists(s: &str) -> Vec<Twist> {
     s.split_ascii_whitespace()
-        .map(|word| TwistData::from_notation(word).expect("invalid twist"))
+        .filter(|&word| word != ".")
+        .map(|word| {
+            TwistData::from_notation(word).unwrap_or_else(|| panic!("invalid twist {word:?}"))
+        })
         .map(|data| crate::TWIST_DATA_TO_TWIST[&data])
         .collect()
 }

@@ -277,6 +277,21 @@ mod tests {
         );
         println!();
     }
+
+    #[test]
+    fn test_stage2_which_target3() {
+        // block on O preserved; I (negative) is unsolved
+        assert_eq!(
+            Some(Sign::Neg),
+            Stage2::with_setup(&crate::parse_twists("FD ID FU ID FD ID FU")).which_target3(),
+        );
+
+        // block on I preserved; O (positive) is unsolved
+        assert_eq!(
+            Some(Sign::Pos),
+            Stage2::with_setup(&crate::parse_twists("FD OD FU OD FD OD FU")).which_target3(),
+        );
+    }
 }
 
 impl Stage2 {

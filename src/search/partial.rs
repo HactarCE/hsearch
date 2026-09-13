@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fmt};
 
-use crate::{prelude::*, twists_to_string};
+use crate::{XyRot, prelude::*, twists_to_string};
 
 pub fn dedup_partials(partials: &mut Vec<Partial>) {
     let old_partial_count = partials.len();
@@ -35,6 +35,11 @@ pub fn dedup_partials(partials: &mut Vec<Partial>) {
 /// Scramble + partial solution.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub struct Partial {
+    /// XY rotation applied to the scramble, multiplied on the left of
+    /// `scramble_rot`.
+    ///
+    /// This is factored out for performance reasons.
+    pub scramble_xy_rot: XyRot,
     /// Rotation applied to the scramble.
     pub scramble_rot: Mat4,
     /// Scramble and solve concatenated.
@@ -57,7 +62,8 @@ impl fmt::Display for Partial {
 impl TransformByMat4 for Partial {
     fn transform_by(&self, m: Mat4) -> Self {
         Self {
-            scramble_rot: m * self.scramble_rot,
+            scramble_xy_rot: XyRot::IDENT,
+            scramble_rot: m * self.scramble_xy_rot.mat4() * self.scramble_rot,
             twists: self.twists.iter().map(|t| t.transform_by(m)).collect(),
             boundaries: self.boundaries.clone(),
         }
@@ -70,6 +76,7 @@ impl Partial {
     pub fn new(scramble: Vec<Twist>) -> Self {
         let boundaries = vec![0, scramble.len()];
         Self {
+            scramble_xy_rot: XyRot::IDENT,
             scramble_rot: IDENT,
             twists: scramble,
             boundaries,
@@ -84,6 +91,8 @@ impl Partial {
 
     pub fn to_string_ansi(&self) -> String {
         let mut ret = String::new();
+        assert_eq!(self.boundaries.first(), Some(&0));
+        assert_eq!(self.boundaries.last(), Some(&self.twists.len()));
         let mut segments = self
             .boundaries
             .array_windows()
@@ -114,9 +123,24 @@ impl Partial {
 
     /// Adds a segment, returning a new partial solution.
     #[must_use]
-    pub fn extend(&self, solution_segment: &[Twist]) -> Self {
+    pub fn extend<S: Stage>(&self, solution_segment: &[Twist]) -> Self {
         let mut ret = self.clone();
-        ret.push(solution_segment);
+        for &twist in solution_segment {
+            ret.twists.push(twist);
+            let rot = S::implicit_rotation_after_twist(twist);
+            if !rot.is_ident() {
+                ret.transform_in_place_by_xy(rot);
+            }
+        }
+        ret.boundaries.push(ret.twists.len());
         ret
+    }
+
+    /// Rotates the whole scramble and solution in place by an XY rotation.
+    fn transform_in_place_by_xy(&mut self, rot: XyRot) {
+        self.scramble_xy_rot = rot * self.scramble_xy_rot;
+        for t in &mut self.twists {
+            *t = rot.transform_twist(*t);
+        }
     }
 }

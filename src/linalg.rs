@@ -225,6 +225,19 @@ impl Mat4 {
         ret
     }
 
+    /// Constructs a 180-degree rotation matrix in the plane spanned by `ax1`
+    /// and `ax2`.
+    ///
+    /// If `ax1 == ax2`, returns the identity matrix.
+    pub fn rot180(ax1: Axis, ax2: Axis) -> Mat4 {
+        let mut ret = IDENT;
+        if ax1 != ax2 {
+            ret[ax1][ax1] = -1;
+            ret[ax2][ax2] = -1;
+        }
+        ret
+    }
+
     /// Constructs a reflection through `axis`.
     pub fn refl(axis: Axis) -> Mat4 {
         let mut ret = IDENT;

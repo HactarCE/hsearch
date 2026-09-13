@@ -410,7 +410,7 @@ static NAME_TO_TWIST: LazyLock<HashMap<Vec<Facet>, TwistData>> = LazyLock::new(|
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SimplePuzzleSim {
     /// For each current piece location: initial piece location, current attitude.
-    pieces: [(Vec4, Mat4); 81],
+    pub pieces: [(Vec4, Mat4); 81],
 }
 
 impl Default for SimplePuzzleSim {

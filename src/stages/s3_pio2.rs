@@ -109,6 +109,13 @@ impl Stage3 {
     pub fn is_target_solved(self, target: &[Self]) -> bool {
         target.iter().any(|&t| self & t == Self::SOLVED & t)
     }
+
+    pub fn which_target2(self) -> Option<Facet> {
+        Self::TARGET2
+            .iter()
+            .position(|&t| self.is_target_solved(&[t]))
+            .map(|i| [Facet::U, Facet::R, Facet::L, Facet::D][i])
+    }
 }
 
 #[cfg(test)]
@@ -225,6 +232,33 @@ mod tests {
             twists,
         );
         println!();
+    }
+
+    #[test]
+    fn test_stage3_which_target2() {
+        // OU is unsolved
+        assert_eq!(
+            Some(Facet::U),
+            Stage3::with_setup(&crate::parse_twists("UL FR UR FL")).which_target2(),
+        );
+
+        // OR is unsolved
+        assert_eq!(
+            Some(Facet::R),
+            Stage3::with_setup(&crate::parse_twists("RU FD RD FU")).which_target2(),
+        );
+
+        // OD is unsolved
+        assert_eq!(
+            Some(Facet::D),
+            Stage3::with_setup(&crate::parse_twists("DR FL DL FR")).which_target2(),
+        );
+
+        // OL is unsolved
+        assert_eq!(
+            Some(Facet::L),
+            Stage3::with_setup(&crate::parse_twists("LD FU LU FD")).which_target2(),
+        );
     }
 }
 

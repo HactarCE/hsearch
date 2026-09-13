@@ -4,7 +4,7 @@ use std::{collections::HashMap, io::BufRead};
 use bitbuffer::{BitReadBuffer, BitReadStream, BitWriteStream, LittleEndian};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 
-use crate::{Twist, canonical::PrevTwists, stages::SubsetMaskStage};
+use crate::{PrevTwists, SubsetMaskStage, Twist};
 
 const DEPTH_BITS: usize = 3;
 
@@ -33,6 +33,7 @@ impl PruningTrie {
     ///
     /// Prompts the user before saving a new file.
     pub fn load_or_generate<S: SubsetMaskStage>(max_depth: u8, filename: &str) -> Self {
+        assert!(max_depth < 1 << DEPTH_BITS, "max_depth exceeds DEPTH_BITS");
         let filename = format!("{filename}_depth{max_depth}.bin");
         let root;
         if std::fs::exists(&filename).unwrap_or(false) {

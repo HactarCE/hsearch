@@ -1,12 +1,14 @@
-use crate::prelude::*;
+use crate::{XyRot, prelude::*};
 
 mod s1_ppsro;
 mod s2_pio1;
 mod s3_pio2;
+mod s4_psio;
 
 pub use s1_ppsro::Stage1;
 pub use s2_pio1::Stage2;
 pub use s3_pio2::Stage3;
+pub use s4_psio::Stage4;
 
 pub trait Stage: Send + Sync + std::fmt::Debug + Copy + Default + Eq {
     /// Applies a twist and returns the new state.
@@ -17,6 +19,11 @@ pub trait Stage: Send + Sync + std::fmt::Debug + Copy + Default + Eq {
     #[must_use]
     fn do_twists(self, twists: impl IntoIterator<Item = Twist>) -> Self {
         twists.into_iter().fold(self, Self::do_twist)
+    }
+
+    /// Implicit rotation to apply to the puzzle after a twist.
+    fn implicit_rotation_after_twist(_twist: Twist) -> XyRot {
+        XyRot::IDENT
     }
 
     /// Returns a state with a given scramble.
@@ -46,12 +53,17 @@ pub trait Stage: Send + Sync + std::fmt::Debug + Copy + Default + Eq {
 pub trait SubsetMaskStage: Stage {
     /// Returns the target mask.
     ///
-    /// This is often the same as the solved state (`Self::default()`), but
-    /// often has fewer bits when only some pieces need to be solved.
+    /// This may be the same as the solved state (`Self::default()`), or it may
+    /// have fewer bits if only some pieces need to be solved.
     fn subset_trie_target() -> Self;
     fn subset_trie_key(self) -> u128;
 
     const SUBSET_TRIE_KEY_BITS: u32;
+}
+
+pub trait StageKeyU64: Stage {
+    fn key(self) -> u64;
+    const PRUNING_MAP_TWISTS: &[Twist];
 }
 
 #[cfg(test)]
@@ -69,6 +81,7 @@ mod tests {
         test_stage_default::<Stage1>();
         test_stage_default::<Stage2>();
         test_stage_default::<Stage3>();
+        test_stage_default::<Stage4>();
     }
 
     fn test_stage_default<S: Stage>() {
@@ -106,5 +119,18 @@ mod tests {
             S::with_setup(&twists1).do_twists(twists2),
             S::with_setup(&both),
         );
+    }
+
+    #[test]
+    fn test_stage4_setup_and_move_transformations() {
+        // stage4 requires a separate test because of the implicit rotations
+        let twists1 = parse_twists("IB ULB BLD FI RDB IB RUB OLDB BLD OF ID LDB"); // preserves stage5 invariants
+        let twists2 = parse_twists("FO OR FO OUF IF2 FO OUFR FD OB FU OR OF2"); // assumes implicit rotations after each twist
+        let twists3 = parse_twists("FO OR FO OFD IF2 FO OFLD FR OB FU OR OB2"); // same as above, but from global perspective
+
+        assert_eq!(
+            Stage4::with_setup(&twists1).do_twists(twists2),
+            Stage4::with_setup(&std::iter::chain(twists1, twists3).collect_vec()),
+        )
     }
 }
