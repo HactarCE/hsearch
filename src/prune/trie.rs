@@ -1,3 +1,4 @@
+use std::io::Write;
 use std::ops::{Deref, DerefMut};
 use std::{collections::HashMap, io::BufRead};
 
@@ -35,17 +36,19 @@ impl PruningTrie {
     pub fn load_or_generate<S: SubsetMaskStage>(max_depth: u8, filename: &str) -> Self {
         assert!(max_depth < 1 << DEPTH_BITS, "max_depth exceeds DEPTH_BITS");
         let filename = format!("{filename}_depth{max_depth}.bin");
-        let root;
         if std::fs::exists(&filename).unwrap_or(false) {
-            println!("Loading pruning table {filename}");
-            root = TrieNode::deserialize(&std::fs::read(&filename).unwrap()).unwrap();
-            println!("Done loading pruning table {filename}");
+            print!("Loading pruning table {filename} ...");
+            std::io::stdout().flush().unwrap();
+            let t = std::time::Instant::now();
+            let root = TrieNode::deserialize(&std::fs::read(&filename).unwrap()).unwrap();
+            println!("done in {:.3?}", t.elapsed());
+            Self { root, max_depth }
         } else {
             println!("Missing pruning table {filename}; generating ...");
             let t = std::time::Instant::now();
-            root = TrieNode::new::<S>(max_depth);
+            let root = TrieNode::new::<S>(max_depth);
             let dur = t.elapsed();
-            println!("Generated pruning table in {dur:?}. Serializing ...");
+            println!("Generated pruning table in {dur:.3?}. Serializing ...");
             let serialized = root.serialize();
             println!(
                 "Pruning table file is {} bytes. Press enter to save.",
@@ -58,8 +61,8 @@ impl PruningTrie {
             println!("Saving pruning table to {filename} ...");
             std::fs::write(&filename, &serialized).unwrap();
             println!("Done saving pruning table {filename}");
+            Self { root, max_depth }
         }
-        Self { root, max_depth }
     }
 }
 
