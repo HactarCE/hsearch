@@ -67,10 +67,6 @@ impl Stage4 {
         bits: 0x01855550055fffff,
     };
 
-    const fn new(bits: u64) -> Self {
-        Self { bits }
-    }
-
     pub fn is_target_solved(self, target: Self) -> bool {
         self.bits == target.bits
     }
@@ -80,6 +76,7 @@ impl Stage4 {
     /// is allowed and `rot` should be applied to all pieces after the twist.
     ///
     /// This method is relatively slow and should not be called on a hot path.
+    #[cfg(test)]
     fn rotation_applied_after_twist(t: TwistData) -> Result<Option<Mat4>, ()> {
         // The region of unsolved pieces can be split into two blocks:
         // - 3x3x3x1 (the entire F cell)
@@ -160,7 +157,7 @@ mod tests {
 
     use super::*;
 
-    use crate::{group::Group, lut_gen::*, util::collect_bits};
+    use crate::{lut_gen::*, util::collect_bits};
 
     fn filter_pos(v: Vec4) -> bool {
         v[Z] == 1 || (v[W] == 1 && v[Y] == 1)
@@ -174,14 +171,6 @@ mod tests {
     }
     fn ridges() -> impl Iterator<Item = Vec4> {
         PieceType::Ridge.iter().filter(|&v| filter_pos(v))
-    }
-    fn all_pieces() -> impl Iterator<Item = Vec4> {
-        itertools::chain!(
-            PieceType::Corner.iter(),
-            PieceType::Edge.iter(),
-            PieceType::Ridge.iter(),
-        )
-        .filter(|&v| filter_pos(v))
     }
 
     #[test]
