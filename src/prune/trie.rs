@@ -1,5 +1,6 @@
+use std::collections::HashMap;
+use std::io::{BufRead, Write};
 use std::ops::{Deref, DerefMut};
-use std::{collections::HashMap, io::BufRead};
 
 use bitbuffer::{BitReadBuffer, BitReadStream, BitWriteStream, LittleEndian};
 use rayon::iter::{ParallelBridge, ParallelIterator};
@@ -34,32 +35,41 @@ impl PruningTrie {
     /// Prompts the user before saving a new file.
     pub fn load_or_generate<S: SubsetMaskStage>(max_depth: u8, filename: &str) -> Self {
         assert!(max_depth < 1 << DEPTH_BITS, "max_depth exceeds DEPTH_BITS");
-        let filename = format!("{filename}_depth{max_depth}.bin");
-        let root;
+        let filename = format!("{filename}_depth{max_depth}.bin.gz");
         if std::fs::exists(&filename).unwrap_or(false) {
-            println!("Loading pruning table {filename}");
-            root = TrieNode::deserialize(&std::fs::read(&filename).unwrap()).unwrap();
-            println!("Done loading pruning table {filename}");
+            print!("Loading pruning table {filename} ... ");
+            std::io::stdout().flush().unwrap();
+            let t = std::time::Instant::now();
+            let serialized = super::read_and_uncompress(&filename).expect("decompression failed");
+            let root = TrieNode::deserialize(&serialized).unwrap();
+            println!("done in {:.3?}", t.elapsed());
+            Self { root, max_depth }
         } else {
             println!("Missing pruning table {filename}; generating ...");
             let t = std::time::Instant::now();
-            root = TrieNode::new::<S>(max_depth);
-            let dur = t.elapsed();
-            println!("Generated pruning table in {dur:?}. Serializing ...");
+            let root = TrieNode::new::<S>(max_depth);
+            println!("Generated pruning table in {:.3?}", t.elapsed());
+
+            print!("Serializing ... ");
+            std::io::stdout().flush().unwrap();
+            let t = std::time::Instant::now();
             let serialized = root.serialize();
-            println!(
-                "Pruning table file is {} bytes. Press enter to save.",
-                serialized.len()
-            );
+            println!("done in {:.3?} ({} bytes)", t.elapsed(), serialized.len());
+            print!("Compressing ... ");
+            std::io::stdout().flush().unwrap();
+            let t = std::time::Instant::now();
+            let compressed = super::compress(&serialized).unwrap();
+            println!("done in {:.3?} ({} bytes)", t.elapsed(), compressed.len());
+            println!("Press enter to save.");
             std::io::stdin()
                 .lock()
                 .read_line(&mut String::new())
                 .unwrap();
             println!("Saving pruning table to {filename} ...");
-            std::fs::write(&filename, &serialized).unwrap();
+            std::fs::write(&filename, compressed).unwrap();
             println!("Done saving pruning table {filename}");
+            Self { root, max_depth }
         }
-        Self { root, max_depth }
     }
 }
 

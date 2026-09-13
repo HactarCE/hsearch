@@ -1,4 +1,5 @@
 /target
 *.hsc
 *.bin
+*.bin.gz
 flamegraph.svg

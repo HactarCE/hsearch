@@ -22,6 +22,7 @@ uninlined_format_args = "warn"
 [dependencies]
 bitbuffer = "0.11.3"
 bumpalo = "3.20.2"
+flate2 = "1.1.10"
 itertools = "0.14.0"
 rand = "0.10.1"
 rapidhash = "4.5.1"
