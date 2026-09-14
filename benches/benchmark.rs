@@ -30,8 +30,12 @@ fn criterion_benchmark(c: &mut Criterion) {
     assert!(init_state.is_solved());
 
     for prune_depth in [4] {
-        let pruning_trie =
-            PruningTrie::<Stage1>::load_or_generate(Stage1::TARGET, prune_depth, "s1_ppsro");
+        let pruning_trie = PruningTrie::<Stage1>::load_or_generate(
+            &[Stage1::TARGET],
+            &Twist::ALL,
+            prune_depth,
+            "s1_ppsro",
+        );
         for distance_to_solved in [4, 10] {
             let input_states = (0..100)
                 .map(|_| {

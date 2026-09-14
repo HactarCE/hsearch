@@ -207,7 +207,7 @@ impl Facet {
 
     /// Returns whether the given vector is in the region of the facet.
     pub fn has_vector(self, v: Vec4) -> bool {
-        v[self.axis()] == self.sign() as i8
+        v[self.axis()].signum() == self.sign() as i8
     }
 
     /// Returns the normal vector of the facet.
@@ -476,10 +476,16 @@ impl SimplePuzzleSim {
     }
 
     fn set_piece(&mut self, init: Vec4, att: Mat4) {
-        let loc = att * init;
-        let Vec4([x, y, z, w]) = loc + Vec4([1; 4]);
-        let index = (x + y * 3 + z * 9 + w * 27) as usize;
-        self.pieces[index] = (init, att);
+        self.pieces[Self::index_of(att * init)] = (init, att);
+    }
+
+    pub fn get_piece(&self, pos: Vec4) -> (Vec4, Mat4) {
+        self.pieces[Self::index_of(pos)]
+    }
+
+    fn index_of(pos: Vec4) -> usize {
+        let Vec4([x, y, z, w]) = pos;
+        ((x + 1) + (y + 1) * 3 + (z + 1) * 9 + (w + 1) * 27) as usize
     }
 }
 

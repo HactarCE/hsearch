@@ -64,13 +64,13 @@ impl PermutationLut {
             preserved_bits(int_width, bit_offset, bits_per_element, self.piece_count);
 
         let element_mask =
-            |p| ((1_u64 << bits_per_element) - 1) << (p * bits_per_element + bit_offset);
+            |p| ((1_u128 << bits_per_element) - 1) << (p * bits_per_element + bit_offset);
 
         let mut s = String::new();
         s += &format!("apply_permutation_lut!(u{int_width}, {state_var}, {twist_var}, [\n");
         for (i, opt_row) in self.table.iter().enumerate() {
             let Some(row) = opt_row else { continue };
-            let mut delta_masks = BTreeMap::<usize, u64>::new();
+            let mut delta_masks = BTreeMap::<usize, u128>::new();
             delta_masks.insert(0, preserved_bits);
             for (src, &dst) in row.iter().enumerate() {
                 let mask = element_mask(src);
@@ -207,12 +207,12 @@ impl OrientationLut {
                 let h_depends_on_h = orientation_map[0] & 2 != orientation_map[2] & 2;
                 let l_offset = j * 2;
                 let h_offset = l_offset + 1;
-                m1 |= (l_for_0 as u64) << l_offset;
-                ma |= (l_depends_on_l as u64) << l_offset;
-                mb |= (l_depends_on_h as u64) << l_offset;
-                m1 |= (h_for_0 as u64) << h_offset;
-                ma |= (h_depends_on_h as u64) << h_offset;
-                mb |= (h_depends_on_l as u64) << h_offset;
+                m1 |= (l_for_0 as u128) << l_offset;
+                ma |= (l_depends_on_l as u128) << l_offset;
+                mb |= (l_depends_on_h as u128) << l_offset;
+                m1 |= (h_for_0 as u128) << h_offset;
+                ma |= (h_depends_on_h as u128) << h_offset;
+                mb |= (h_depends_on_l as u128) << h_offset;
             }
             assert_eq!(0, preserved_bits & m1);
             assert_eq!(0, preserved_bits & ma);
@@ -232,9 +232,9 @@ fn preserved_bits(
     bit_offset: usize,
     bits_per_element: usize,
     piece_count: usize,
-) -> u64 {
-    !1_u64
+) -> u128 {
+    !1_u128
         .unbounded_shl((bit_offset + bits_per_element * piece_count) as u32)
-        .wrapping_sub(1_u64.strict_shl(bit_offset as u32))
-        & 1_u64.unbounded_shl(int_width as u32).wrapping_sub(1)
+        .wrapping_sub(1_u128.strict_shl(bit_offset as u32))
+        & 1_u128.unbounded_shl(int_width as u32).wrapping_sub(1)
 }

@@ -9,6 +9,7 @@ use std::ops::{Index, IndexMut};
 pub type Coord = i8;
 
 pub use Axis::{W, X, Y, Z};
+use itertools::Itertools;
 
 /// Axis in 4-dimensional Euclidean space.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -157,6 +158,18 @@ impl Vec4 {
         v[axis] = 0;
         assert_eq!(v, Self::ZERO, "vector is not axis-aligned");
         axis
+    }
+
+    /// Returns the piece position and sticker axis of a sticker vector.
+    ///
+    /// A sticker vector has a single element that is ±2, and all other elements
+    /// are 0 or ±1.
+    #[track_caller]
+    pub fn unwrap_sticker(self) -> (Vec4, Axis) {
+        let axis = Axis::from_u8(self.0.iter().position_max_by_key(|x| x.abs()).unwrap() as _);
+        let mut v = self;
+        v[axis] /= 2;
+        (v, axis)
     }
 
     /// Returns an iterator over all coordinates in a region including the

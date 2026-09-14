@@ -1,4 +1,6 @@
-use std::ops::Index;
+use std::{ops::Index, sync::LazyLock};
+
+use itertools::Itertools;
 
 use crate::{TransformByMat4, puzzle::*};
 
@@ -7,6 +9,9 @@ use crate::{TransformByMat4, puzzle::*};
 pub struct Twist(pub u8);
 
 impl Twist {
+    pub const ALL: LazyLock<&[Twist]> =
+        LazyLock::new(|| (0..8 * 23).map(Self).collect_vec().leak());
+
     /// Returns the index corresponding to the twist.
     pub fn to_index(self) -> usize {
         self.0 as usize

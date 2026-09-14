@@ -113,7 +113,7 @@ mod tests {
     fn lutgen_mul_xy_rot_twist() {
         println!(
             "const MUL_XY_ROT_TWIST: [[u8; {}]; 3] = [",
-            Twist::iter().len()
+            Twist::iter().len(),
         );
         for pow in [1, 2, 3] {
             let m = XyRot { pow }.mat4();
