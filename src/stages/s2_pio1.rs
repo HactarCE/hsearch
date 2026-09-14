@@ -191,11 +191,11 @@ mod tests {
         println!();
 
         println!("pub const SOLVED: Self = Self {{");
-        let m = collect_bits(ridges().map(|v| v[W] != 0));
+        let m: u16 = collect_bits(ridges().map(|v| v[W] != 0));
         println!("    r_p: 0x{m:04x},");
-        let m = collect_bits(edges().flat_map(|v| [v[W] != 0, false]));
+        let m: u64 = collect_bits(edges().flat_map(|v| [v[W] != 0, false]));
         println!("    e_op: 0x{m:016x},");
-        let m = collect_bits(corners().flat_map(|_| [true, true]));
+        let m: u32 = collect_bits(corners().flat_map(|_| [true, true]));
         println!("    c_o: 0x{m:08x},");
         println!("}};");
         println!();
@@ -215,9 +215,10 @@ mod tests {
                 .into_iter()
                 .map(|m| {
                     use crate::util::collect_bits;
-                    let r_p = collect_bits(ridges().map(|v| block_predicate(m * v)));
-                    let e_op = collect_bits(edges().flat_map(|v| [block_predicate(m * v); 2]));
-                    let c_o = collect_bits(corners().flat_map(|v| [block_predicate(m * v); 2]));
+                    let r_p: u16 = collect_bits(ridges().map(|v| block_predicate(m * v)));
+                    let e_op: u64 = collect_bits(edges().flat_map(|v| [block_predicate(m * v); 2]));
+                    let c_o: u32 =
+                        collect_bits(corners().flat_map(|v| [block_predicate(m * v); 2]));
                     (r_p, e_op, c_o)
                 })
                 .sorted()

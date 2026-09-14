@@ -141,13 +141,13 @@ mod tests {
         println!();
 
         println!("pub const SOLVED: Self = Self {{");
-        let m = collect_bits(ridges().map(|v| v[W] != 0));
+        let m: u16 = collect_bits(ridges().map(|v| v[W] != 0));
         println!("    r_p: 0x{m:04x},");
-        let m = collect_bits(std::iter::chain(
+        let m: u64 = collect_bits(std::iter::chain(
             edges().flat_map(|v| [v[W] != 0, false]),
             corners().flat_map(|_| [true, true]),
         ));
-        println!("    e_op_c_o: 0x{m:08x},");
+        println!("    e_op_c_o: 0x{m:016x},");
         println!("}};");
         println!();
 
@@ -163,8 +163,8 @@ mod tests {
                 .elems()
                 .into_iter()
                 .map(|m| {
-                    let r_p = collect_bits(ridges().map(|v| block_predicate(m * v)));
-                    let e_op_c_o = collect_bits(std::iter::chain(
+                    let r_p: u16 = collect_bits(ridges().map(|v| block_predicate(m * v)));
+                    let e_op_c_o: u64 = collect_bits(std::iter::chain(
                         edges().flat_map(|v| [block_predicate(m * v); 2]),
                         corners().flat_map(|v| [block_predicate(m * v); 2]),
                     ));

@@ -348,6 +348,7 @@ dependencies = [
  "bumpalo",
  "criterion",
  "itertools 0.14.0",
+ "num-traits",
  "pretty_assertions",
  "rand",
  "rapidhash",

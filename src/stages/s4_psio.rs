@@ -176,7 +176,7 @@ mod tests {
     #[test]
     fn print_stage4_constants() {
         println!("pub const SOLVED: Self = Self {{");
-        let m = collect_bits(itertools::chain!(
+        let m: u64 = collect_bits(itertools::chain!(
             corners().flat_map(|_| [true, true]),
             edges().flat_map(|v| [v[W] != 0, false]),
             ridges().map(|v| v[W] != 0)

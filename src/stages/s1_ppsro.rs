@@ -104,9 +104,10 @@ mod tests {
 
     #[test]
     fn print_stage1_constants() {
-        let m = crate::util::collect_bits(PieceType::Edge.iter().map(|v| v[W] == 0 && v[Z] <= 0));
+        let m: u32 =
+            crate::util::collect_bits(PieceType::Edge.iter().map(|v| v[W] == 0 && v[Z] <= 0));
         println!("const TARGET_E_P_MASK: u32 = 0x{m:08x};");
-        let m = crate::util::collect_bits(
+        let m: u64 = crate::util::collect_bits(
             PieceType::Ridge
                 .iter()
                 .map(|v| v[W] == 0 && v[Z] <= 0)
@@ -114,9 +115,10 @@ mod tests {
         );
         println!("const TARGET_R_OP_MASK: u64 = 0x{m:016x};");
 
-        let m = crate::util::collect_bits(PieceType::Edge.iter().map(|v| v[W] != 0));
+        let m: u32 = crate::util::collect_bits(PieceType::Edge.iter().map(|v| v[W] != 0));
         println!("const SOLVED_E_P: u32 = 0x{m:08x};");
-        let m = crate::util::collect_bits(PieceType::Ridge.iter().flat_map(|v| [v[W] != 0, false]));
+        let m: u64 =
+            crate::util::collect_bits(PieceType::Ridge.iter().flat_map(|v| [v[W] != 0, false]));
         println!("const SOLVED_R_OP: u64 = 0x{m:016x};");
     }
 

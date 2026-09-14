@@ -29,14 +29,17 @@ pub fn is_permutation_odd(mut n: usize) -> bool {
     res
 }
 
-/// Collects up to 64 booleans into a bitmask.
+/// Collects booleans into a bitmask.
+///
+/// # Panics
+///
+/// Panics in debug mode if there are too many bits.
 #[cfg(test)]
-pub fn collect_bits(iter: impl IntoIterator<Item = bool>) -> u64 {
+pub fn collect_bits<B: num_traits::PrimInt>(iter: impl IntoIterator<Item = bool>) -> B {
     iter.into_iter()
-        .take(64)
         .positions(|b| b)
-        .map(|i| 1 << i)
-        .fold(0, |a, b| a | b)
+        .map(|i| B::one() << i)
+        .fold(B::zero(), |a, b| a | b)
 }
 
 /// Parses twists from a string.
