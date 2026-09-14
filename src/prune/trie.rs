@@ -5,24 +5,24 @@ use std::{collections::HashMap, io::BufRead};
 use bitbuffer::{BitReadBuffer, BitReadStream, BitWriteStream, LittleEndian};
 use rayon::iter::{ParallelBridge, ParallelIterator};
 
-use crate::{PrevTwists, SubsetMaskStage, Twist};
+use crate::{PrevTwists, SubsetMaskStage, TrieKey, Twist};
 
 const DEPTH_BITS: usize = 3;
 
 #[derive(Debug)]
-pub struct PruningTrie {
-    root: TrieNode,
+pub struct PruningTrie<S: SubsetMaskStage> {
+    root: TrieNode<S>,
     max_depth: u8,
 }
 
-impl PruningTrie {
+impl<S: SubsetMaskStage> PruningTrie<S> {
     /// Returns the depth of the search that generated the purning trie.
     pub fn depth(&self) -> u8 {
         self.max_depth
     }
 
     /// Returns whether the given branch should be pruned.
-    pub fn query_should_prune(&self, query_key: u128, remaining_search_depth: u8) -> bool {
+    pub fn query_should_prune(&self, query_key: S::Key, remaining_search_depth: u8) -> bool {
         remaining_search_depth <= self.max_depth
             && self
                 .root
@@ -33,7 +33,7 @@ impl PruningTrie {
     /// missing.
     ///
     /// Prompts the user before saving a new file.
-    pub fn load_or_generate<S: SubsetMaskStage>(max_depth: u8, filename: &str) -> Self {
+    pub fn load_or_generate(target: S, max_depth: u8, filename: &str) -> Self {
         assert!(max_depth < 1 << DEPTH_BITS, "max_depth exceeds DEPTH_BITS");
         let filename = format!("{filename}_depth{max_depth}.bin");
         if std::fs::exists(&filename).unwrap_or(false) {
@@ -46,7 +46,7 @@ impl PruningTrie {
         } else {
             println!("Missing pruning table {filename}; generating ...");
             let t = std::time::Instant::now();
-            let root = TrieNode::new::<S>(max_depth);
+            let root = TrieNode::<S>::new(target, max_depth);
             let dur = t.elapsed();
             println!("Generated pruning table in {dur:.3?}. Serializing ...");
             let serialized = root.serialize();
@@ -70,30 +70,26 @@ impl PruningTrie {
 /// have a subset of the bits of the entry key. All matching entries are scanned
 /// and the one with the lowest value is returned.
 #[derive(Debug, Default, PartialEq, Eq)]
-struct TrieNode {
+struct TrieNode<S: SubsetMaskStage> {
     /// Number of bits in `mask`.
     mask_len: u8,
     /// Mask that is required by `inner`.
-    mask: u128,
+    mask: S::Key,
     /// Minimum lower bound among all descendants.
     lower_bound: u8,
 
-    children: Option<&'static mut TrieChildren>,
+    children: Option<&'static mut TrieChildren<S>>,
 }
 
-impl TrieNode {
-    fn query_should_prune(&self, query_key: u128, remaining_search_depth: u8) -> bool {
-        if query_key & self.mask == 0 {
+impl<S: SubsetMaskStage> TrieNode<S> {
+    fn query_should_prune(&self, query_key: S::Key, remaining_search_depth: u8) -> bool {
+        if query_key.matches(self.mask, self.mask_len) {
             self.lower_bound > remaining_search_depth
                 || self.children.as_ref().is_some_and(|children| {
-                    let child_bit = (query_key >> self.mask_len) & 1;
-                    let child_key = (query_key >> self.mask_len) >> 1;
-                    if child_bit == 0 {
-                        children[0].query_should_prune(child_key, remaining_search_depth)
-                            && children[1].query_should_prune(child_key, remaining_search_depth)
-                    } else {
-                        children[0].query_should_prune(child_key, remaining_search_depth)
-                    }
+                    let ([branch0, branch1], child_key) = query_key.skip(self.mask_len).branch();
+                    (!branch0 || children[0].query_should_prune(child_key, remaining_search_depth))
+                        && (!branch1
+                            || children[1].query_should_prune(child_key, remaining_search_depth))
                 })
         } else {
             true
@@ -104,18 +100,18 @@ impl TrieNode {
     fn insert(
         &mut self,
         alloc: &'static bumpalo::Bump,
-        entry_key: u128,
+        entry_key: S::Key,
         key_bits_remaining: u8,
         new_value: u8,
     ) {
-        let shared_bits = (entry_key ^ self.mask).trailing_zeros() as u8;
+        let shared_bits = entry_key.common_lsb_prefix(self.mask);
         if shared_bits >= self.mask_len {
             if new_value < self.lower_bound {
                 self.lower_bound = new_value;
             }
             if let Some(children) = &mut self.children {
-                let child_bit = (entry_key >> self.mask_len) & 1;
-                let child_key = (entry_key >> self.mask_len) >> 1;
+                let child_bit = entry_key.skip(self.mask_len).lsb();
+                let child_key = entry_key.skip(self.mask_len + 1);
                 let child_bits_remaining = key_bits_remaining - self.mask_len - 1;
                 children[child_bit as usize].insert(
                     alloc,
@@ -125,33 +121,33 @@ impl TrieNode {
                 );
             }
         } else {
-            let old_child_branch_bit = (self.mask >> shared_bits) & 1;
+            let old_child_branch_bit = self.mask.skip(shared_bits).lsb();
             let old_child = TrieNode {
                 mask_len: self.mask_len - shared_bits - 1,
-                mask: self.mask >> (shared_bits + 1),
+                mask: self.mask.skip(shared_bits + 1),
                 lower_bound: self.lower_bound,
                 children: self.children.take(),
             };
             let new_child = TrieNode {
                 mask_len: key_bits_remaining - shared_bits - 1,
-                mask: entry_key >> (shared_bits + 1),
+                mask: entry_key.skip(shared_bits + 1),
                 lower_bound: new_value,
                 children: None,
             };
             *self = TrieNode {
                 mask_len: shared_bits,
-                mask: self.mask & ((1 << shared_bits) - 1),
+                mask: self.mask.truncate(shared_bits),
                 lower_bound: std::cmp::min(self.lower_bound, new_value),
-                children: Some(alloc.alloc(TrieChildren(if old_child_branch_bit == 0 {
-                    [old_child, new_child]
-                } else {
+                children: Some(alloc.alloc(TrieChildren(if old_child_branch_bit {
                     [new_child, old_child]
+                } else {
+                    [old_child, new_child]
                 }))),
             };
         }
     }
 
-    fn with_single_entry(key: u128, key_bits: u8, value: u8) -> Self {
+    fn with_single_entry(key: S::Key, key_bits: u8, value: u8) -> Self {
         Self {
             mask_len: key_bits,
             mask: key,
@@ -160,23 +156,22 @@ impl TrieNode {
         }
     }
 
-    fn new<S: SubsetMaskStage>(max_depth: u8) -> Self {
+    fn new(target: S, max_depth: u8) -> Self {
         assert!(max_depth < ((1 << DEPTH_BITS) - 1));
 
-        let total_bits = S::SUBSET_TRIE_KEY_BITS as u8;
-        let init_mask = S::subset_trie_target();
+        let total_bits = S::Key::BITS;
         let t = std::time::Instant::now();
-        let entry_maps: Vec<HashMap<u128, u8>> = Twist::iter()
+        let entry_maps: Vec<HashMap<S::Key, u8>> = Twist::iter()
             .par_bridge()
             .map(|first_twist| {
                 let mut entries = HashMap::new();
                 for depth in 1..=max_depth {
                     let mut queue = vec![(
-                        init_mask.do_twist(first_twist),
+                        target.do_twist(first_twist),
                         1,
                         PrevTwists::new().do_twist(first_twist).unwrap(),
                     )];
-                    entries.insert(init_mask.do_twist(first_twist).subset_trie_key(), 1);
+                    entries.insert(S::Key::from(target.do_twist(first_twist)), 1);
                     if depth <= 1 {
                         continue;
                     }
@@ -185,7 +180,7 @@ impl TrieNode {
                         for twist in Twist::iter() {
                             if let Some(new_prev_twists) = prev_twists.do_twist(twist) {
                                 let new_state = state.do_twist(twist);
-                                match entries.entry(new_state.subset_trie_key()) {
+                                match entries.entry(S::Key::from(new_state)) {
                                     std::collections::hash_map::Entry::Occupied(mut e) => {
                                         if *e.get() > d {
                                             e.insert(d);
@@ -213,7 +208,7 @@ impl TrieNode {
             t.elapsed(),
             entry_count_estimate,
         );
-        let mut ret = TrieNode::with_single_entry(init_mask.subset_trie_key(), total_bits, 0);
+        let mut ret = TrieNode::with_single_entry(S::Key::from(target), total_bits, 0);
         let mut new_hashmap = HashMap::new();
         println!("Deduplicating entries ...");
         for map in entry_maps {
@@ -262,7 +257,7 @@ impl TrieNode {
             children,
         } = self;
         buf.write_int(*mask_len, 8)?;
-        buf.write_int(*mask, *mask_len as usize)?;
+        mask.write_bits(*mask_len, buf)?;
         buf.write_bool(children.is_some())?;
         if let Some(children) = children {
             children[0].ser_to_buf(buf)?;
@@ -282,7 +277,7 @@ impl TrieNode {
         buf: &mut BitReadStream<'_, LittleEndian>,
     ) -> bitbuffer::Result<Self> {
         let mask_len = buf.read_int::<u8>(8)?;
-        let mask = buf.read_int::<u128>(mask_len as usize)?;
+        let mask = S::Key::read_bits(mask_len, buf)?;
         let children = if buf.read_bool()? {
             Some(alloc.alloc(TrieChildren([
                 Self::deser_from_buf(alloc, buf)?,
@@ -307,17 +302,17 @@ impl TrieNode {
 /// Wrapper around `[TrieNode; 2]` for cache alignment.
 #[derive(Debug, PartialEq, Eq)]
 #[repr(align(64))]
-struct TrieChildren([TrieNode; 2]);
+struct TrieChildren<S: SubsetMaskStage>([TrieNode<S>; 2]);
 
-impl Deref for TrieChildren {
-    type Target = [TrieNode; 2];
+impl<S: SubsetMaskStage> Deref for TrieChildren<S> {
+    type Target = [TrieNode<S>; 2];
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl DerefMut for TrieChildren {
+impl<S: SubsetMaskStage> DerefMut for TrieChildren<S> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
@@ -334,7 +329,7 @@ mod tests {
     #[test]
     fn test_pruning_trie_ser_deser() {
         for depth in 1..=2 {
-            let pruning_trie = TrieNode::new::<Stage1>(depth);
+            let pruning_trie = TrieNode::<Stage1>::new(Stage1::TARGET, depth);
             let serialized = pruning_trie.serialize();
             let deserialized = TrieNode::deserialize(&serialized).unwrap();
             assert_eq!(deserialized, pruning_trie);
@@ -343,8 +338,8 @@ mod tests {
 
     #[test]
     fn test_pruning_trie_determinism() {
-        let trie1 = TrieNode::new::<Stage1>(2);
-        let trie2 = TrieNode::new::<Stage1>(2);
+        let trie1 = TrieNode::<Stage1>::new(Stage1::TARGET, 2);
+        let trie2 = TrieNode::<Stage1>::new(Stage1::TARGET, 2);
         assert_eq!(trie1, trie2);
     }
 }

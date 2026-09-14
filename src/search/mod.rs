@@ -40,7 +40,7 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     Iddfs::new::<Stage1>(
         &Twist::iter().collect_vec(),
         |s| s.is_solved(),
-        |s, d| s1_prune.query_should_prune(s.subset_trie_key(), d),
+        |s, d| s1_prune.query_should_prune(s.into(), d),
         3..=6,
     )
     .iddfs_extend(&mut partials)?;

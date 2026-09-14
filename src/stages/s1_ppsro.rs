@@ -67,6 +67,11 @@ impl Stage1 {
     const SOLVED_E_P: u32 = 0xfff00fff;
     const SOLVED_R_OP: u64 = 0x0000555000000555;
 
+    pub const TARGET: Self = Self {
+        e_p: Self::TARGET_E_P_MASK,
+        r_op: Self::TARGET_R_OP_MASK,
+    };
+
     pub fn is_solved(self) -> bool {
         self.e_p & Self::TARGET_E_P_MASK == 0 && self.r_op & Self::TARGET_R_OP_MASK == 0
     }
@@ -142,18 +147,7 @@ mod tests {
 }
 
 impl SubsetMaskStage for Stage1 {
-    fn subset_trie_target() -> Self {
-        Self {
-            e_p: Self::TARGET_E_P_MASK,
-            r_op: Self::TARGET_R_OP_MASK,
-        }
-    }
-
-    fn subset_trie_key(self) -> u128 {
-        self.e_p as u128 | ((self.r_op as u128) << 32)
-    }
-
-    const SUBSET_TRIE_KEY_BITS: u32 = 32 + 48;
+    type Key = Stage1TrieKey;
 }
 
 impl Stage for Stage1 {

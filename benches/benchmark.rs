@@ -30,7 +30,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     assert!(init_state.is_solved());
 
     for prune_depth in [4] {
-        let pruning_trie = PruningTrie::load_or_generate::<Stage1>(prune_depth, "s1_ppsro");
+        let pruning_trie =
+            PruningTrie::<Stage1>::load_or_generate(Stage1::TARGET, prune_depth, "s1_ppsro");
         for distance_to_solved in [4, 10] {
             let input_states = (0..100)
                 .map(|_| {
@@ -47,7 +48,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 g.bench_function(id, |b| {
                     b.iter(|| {
                         let s = black_box(input_states_iter.next().unwrap());
-                        pruning_trie.query_should_prune(s.subset_trie_key(), remaining_search_depth)
+                        pruning_trie.query_should_prune(s.into(), remaining_search_depth)
                     });
                 });
             }
