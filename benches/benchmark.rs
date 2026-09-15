@@ -1,7 +1,7 @@
 #![allow(unused_crate_dependencies)]
 
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use hsearch::{SCRAMBLE_LEN, prelude::*};
+use hsearch::{SCRAMBLE_LEN, prelude::*, stages::*};
 use itertools::Itertools;
 use rand::{
     SeedableRng,
@@ -9,10 +9,70 @@ use rand::{
 };
 use std::hint::black_box;
 
-fn criterion_benchmark(c: &mut Criterion) {
-    use hsearch::stages::*;
+criterion_main!(benches);
+criterion_group!(benches, criterion_benchmark);
 
-    // println!("Hello, world!");
+fn criterion_benchmark(c: &mut Criterion) {
+    bench_do_twist(c);
+    bench_pruning_trie(c);
+}
+
+fn bench_do_twist(c: &mut Criterion) {
+    let mut g = c.benchmark_group("stage1_do_twist");
+    let twist_sequence = {
+        let mut twist_rng = rand::rngs::StdRng::seed_from_u64(1);
+        (0..500)
+            .map(|_| Twist::iter().choose(&mut twist_rng).unwrap())
+            .collect_vec()
+    };
+    g.bench_function("Stage1", |b| {
+        b.iter(|| {
+            let state = black_box(Stage1::default());
+            black_box(twist_sequence.iter().copied().fold(state, Stage1::do_twist))
+        });
+    });
+    g.bench_function("V2Stage1", |b| {
+        b.iter(|| {
+            let state = black_box(V2Stage1::default());
+            black_box(
+                twist_sequence
+                    .iter()
+                    .copied()
+                    .fold(state, V2Stage1::do_twist),
+            )
+        });
+    });
+    g.finish();
+
+    let mut g = c.benchmark_group("stage2_do_twist");
+    let twist_sequence = {
+        let mut twist_rng = rand::rngs::StdRng::seed_from_u64(1);
+        (0..500)
+            .map(|_| {
+                Stage2::TWISTS
+                    .iter()
+                    .copied()
+                    .choose(&mut twist_rng)
+                    .unwrap()
+            })
+            .collect_vec()
+    };
+    g.bench_function("Stage1", |b| {
+        b.iter(|| {
+            let state = black_box(Stage1::default());
+            black_box(twist_sequence.iter().copied().fold(state, Stage1::do_twist))
+        });
+    });
+    g.bench_function("Stage2", |b| {
+        b.iter(|| {
+            let state = black_box(Stage2::default());
+            black_box(twist_sequence.iter().copied().fold(state, Stage2::do_twist))
+        });
+    });
+    g.finish();
+}
+
+fn bench_pruning_trie(c: &mut Criterion) {
     let mut g = c.benchmark_group("stage1_pruning_trie_lookup");
 
     let mut rng = rand::rngs::StdRng::seed_from_u64(0);
@@ -59,6 +119,3 @@ fn criterion_benchmark(c: &mut Criterion) {
         }
     }
 }
-
-criterion_group!(benches, criterion_benchmark);
-criterion_main!(benches);
