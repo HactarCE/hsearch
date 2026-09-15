@@ -501,9 +501,8 @@ impl Stage for Stage2 {
             182 => [(&0x87FF<<0)|(&0x2000<<1)|(&0x800<<2)|(&0x4000<<14)|(&0x1000<<15)],
             183 => [(&0xFFE1<<0)|(&0x2<<1)|(&0x4<<2)|(&0x8<<14)|(&0x10<<15)],
         ]);
-        let e_op = crate::lut::update_orientations_u64(
-            e_op,
-            [
+        let e_op = crate::lut::update_orientations_u64(e_op, {
+            static LUT: [[u64; 3]; 184] = [
                 [0x0, 0xFFFF33FF33FF33FF, 0xCC00CC00CC00],
                 [0x0, 0xFFFFCCFFCCFFCCFF, 0x330033003300],
                 [0x0, 0xFF7FFF7FFF7FFF7F, 0xC0A0C050C0A0C0],
@@ -688,8 +687,9 @@ impl Stage for Stage2 {
                 [0x0, 0xFFFFFFC3FFFFFFC3, 0xBE000000BE],
                 [0x0, 0xFFFFFFFFFFFFFFFF, 0x550000000000],
                 [0x0, 0xFFFFFFFFFFFFFFFF, 0x5500],
-            ][twist.to_index()],
-        );
+            ];
+            LUT[twist.to_index()]
+        });
         let e_op = apply_permutation_lut!(u64, e_op, twist, [
             4 => [(&0xFF00FFFF0000FFFF<<0)|(&0x30000000000000<<2)|(&0xC00000<<4)|(&0x30000<<8)|(&0xC0000000<<22)|(&0xC000000<<24)|(&0x300000<<28)|(&0xC000000000000<<36)|(&0xC0000000000000<<40)|(&0x3000000000000<<44)|(&0x30000000<<56)|(&0x3000000<<58)|(&0xC0000<<62)],
             6 => [(&0xFF000000FFFFFFFF<<0)|(&0xC00000000000<<2)|(&0x300000000<<4)|(&0x3000000000<<6)|(&0x300000000000<<10)|(&0xC00000000<<12)|(&0xC000000000<<14)|(&0x3000000000000<<50)|(&0x30000000000000<<52)|(&0xC0000000000<<54)|(&0xC000000000000<<58)|(&0xC0000000000000<<60)|(&0x30000000000<<62)],
@@ -772,9 +772,8 @@ impl Stage for Stage2 {
             182 => [(&0xFF000000FFFFFFFF<<0)|(&0x30033000000000<<2)|(&0x30C0300000000<<4)|(&0xC030C000000000<<60)|(&0xCC00C00000000<<62)],
             183 => [(&0xFFFFFFFFFF000000<<0)|(&0x33003<<2)|(&0xC030C<<4)|(&0x30C030<<60)|(&0xC00CC0<<62)],
         ]);
-        let c_o = crate::lut::update_orientations_u32(
-            c_o,
-            [
+        let c_o = crate::lut::update_orientations_u32(c_o, {
+            static LUT: [[u32; 3]; 184] = [
                 [0x0, 0x77777777, 0xCCCCCCCC],
                 [0x0, 0xDDDDDDDD, 0x33333333],
                 [0xA0A0A0A0, 0x5F5F5F5F, 0xF0F0F0F0],
@@ -959,8 +958,9 @@ impl Stage for Stage2 {
                 [0x0, 0xFFFFFFFF, 0xAA00AA],
                 [0x55550000, 0xFFFFFFFF, 0x55550000],
                 [0x5555, 0xFFFFFFFF, 0x5555],
-            ][twist.to_index()],
-        );
+            ];
+            LUT[twist.to_index()]
+        });
         let c_o = apply_permutation_lut!(u32, c_o, twist, [
             0 => [(&0x333FF333<<0)|(&0xC0<<4)|(&0xC0000000<<8)|(&0xC00000<<12)|(&0xC00<<20)|(&0xC<<24)|(&0xC000000<<28)],
             1 => [(&0xFCCCCCCF<<0)|(&0x300000<<4)|(&0x3000<<8)|(&0x30<<12)|(&0x3000000<<20)|(&0x30000<<24)|(&0x300<<28)],

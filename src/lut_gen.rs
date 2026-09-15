@@ -169,9 +169,11 @@ impl OrientationLut {
             preserved_bits(int_width, bit_offset, bits_per_element, self.piece_count);
 
         let mut s = String::new();
-        s += &format!("crate::lut::update_orientations_u{int_width}(\n");
-        s += &format!("    {state_var},\n");
-        s += "    [\n";
+        s += &format!("crate::lut::update_orientations_u{int_width}({state_var}, {{\n");
+        s += &format!(
+            "    static LUT: [[u{int_width}; 3]; {}] = [\n",
+            self.table.len(),
+        );
 
         for row in &self.table {
             let Some(row) = row else {
@@ -221,8 +223,9 @@ impl OrientationLut {
             s += &format!("        [0x{m1:X}, 0x{ma:X}, 0x{mb:X}],\n");
         }
 
-        s += &format!("    ][{twist_var}.to_index()],\n");
-        s += ")\n";
+        s += &format!("    ];\n");
+        s += &format!("    LUT[{twist_var}.to_index()]\n");
+        s += "})\n";
         s
     }
 }

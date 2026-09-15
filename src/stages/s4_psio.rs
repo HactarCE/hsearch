@@ -336,9 +336,8 @@ impl Stage for Stage4 {
 
     fn do_twist(self, twist: Twist) -> Self {
         let Self { bits } = self;
-        let bits = crate::lut::update_orientations_u64(
-            bits,
-            [
+        let bits = crate::lut::update_orientations_u64(bits, {
+            static LUT: [[u64; 3]; 184] = [
                 [0, 0, 0],
                 [0, 0, 0],
                 [0, 0, 0],
@@ -523,8 +522,9 @@ impl Stage for Stage4 {
                 [0, 0, 0],
                 [0x55, 0xFFFFFFFFFFFFFFFF, 0x550000055],
                 [0x55, 0xFFFFFFFFFFFFFFFF, 0x55],
-            ][twist.to_index()],
-        );
+            ];
+            LUT[twist.to_index()]
+        });
         let bits = apply_permutation_lut!(u64, bits, twist, [
             4 => [(&0xFFFC03F0000C0F03<<0)|(&0xC0000000C000<<2)|(&0xC000000<<4)|(&0x3000C0<<8)|(&0xC<<10)|(&0xC00000000<<12)|(&0xC0000000<<14)|(&0x3000000<<18)|(&0x300000000000<<46)|(&0x3000000000000<<50)|(&0xC0000030000<<54)|(&0x300003000<<56)|(&0x30000000<<58)|(&0xC00030<<62)],
             6 => [(&0xFFFF000000000000<<0)|(&0x300330C30<<2)|(&0x30030C00003<<4)|(&0x3000000300<<6)|(&0xC000000000<<8)|(&0xC00000000000<<56)|(&0xC000000C000<<58)|(&0x300C030000C0<<60)|(&0xCC0C300C<<62)],
