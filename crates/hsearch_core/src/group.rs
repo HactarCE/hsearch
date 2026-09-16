@@ -21,7 +21,6 @@ impl Group {
     }
 
     /// Returns all elements of the symmetry group.
-    #[cfg(test)]
     pub fn elems(&self) -> Vec<Mat4> {
         self.orbit_with(vec![IDENT], |g, &m| g * m, |&m| m)
     }

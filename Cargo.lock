@@ -358,6 +358,8 @@ dependencies = [
  "bnum",
  "bumpalo",
  "criterion",
+ "hsearch_codegen",
+ "hsearch_core",
  "itertools 0.14.0",
  "num-traits",
  "pretty_assertions",
@@ -369,10 +371,18 @@ dependencies = [
 [[package]]
 name = "hsearch_codegen"
 version = "0.1.0"
+dependencies = [
+ "hsearch_core",
+ "itertools 0.14.0",
+ "num-traits",
+]
 
 [[package]]
 name = "hsearch_core"
 version = "0.1.0"
+dependencies = [
+ "itertools 0.14.0",
+]
 
 [[package]]
 name = "id-arena"

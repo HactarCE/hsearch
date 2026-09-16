@@ -107,19 +107,15 @@
 #[cfg(test)]
 extern crate criterion as _; // suppress unused-crate-dependencies warning
 
+pub use hsearch_core::*;
 pub use rapidhash::RapidHashMap as HashMap;
 
 #[macro_use]
 mod lut;
 mod canonical;
-mod group;
-mod linalg;
-mod lut_gen;
 mod prune;
-mod puzzle;
 mod search;
 pub mod stages;
-mod twist;
 mod util;
 mod xy_rot;
 
@@ -129,10 +125,8 @@ pub use prelude::*;
 pub mod prelude {
     pub use crate::Stage;
     pub use crate::canonical::PrevTwists;
-    pub use crate::linalg::*;
     pub use crate::prune::*;
-    pub use crate::puzzle::*;
-    pub use crate::twist::*;
+    pub use hsearch_core::*;
 }
 
 pub const SCRAMBLE_LEN: usize = 50;

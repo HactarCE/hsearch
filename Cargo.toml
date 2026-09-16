@@ -22,6 +22,9 @@ stable_sort_primitive = "warn"
 uninlined_format_args = "warn"
 
 [workspace.dependencies]
+hsearch_codegen = { path = "crates/hsearch_codegen" }
+hsearch_core = { path = "crates/hsearch_core" }
+
 bitbuffer = "0.11.3"
 bnum = { version = "0.14.4", features = ["numtraits"] }
 bumpalo = "3.20.2"

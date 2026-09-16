@@ -1,3 +1,4 @@
+use crate::Mat4;
 use std::{ops::Index, sync::LazyLock};
 
 use itertools::Itertools;
@@ -34,7 +35,7 @@ impl Twist {
 }
 
 impl TransformByMat4 for Twist {
-    fn transform_by(&self, m: crate::prelude::Mat4) -> Self {
+    fn transform_by(&self, m: Mat4) -> Self {
         *TWIST_DATA_TO_TWIST
             .get(&self.data().transform_by(m))
             .expect("no transformed twist")
@@ -90,10 +91,12 @@ mod tests {
 
     #[test]
     fn test_transform_twist() {
-        let t = crate::util::parse_twists("RO")[0];
-        assert_eq!(
-            t.transform_by(crate::Mat4::rot(X, Y)),
-            crate::util::parse_twists("UO")[0],
-        );
+        let t = *TWIST_DATA_TO_TWIST
+            .get(&TwistData::from_notation("RO").unwrap())
+            .unwrap();
+        let expected = *TWIST_DATA_TO_TWIST
+            .get(&TwistData::from_notation("UO").unwrap())
+            .unwrap();
+        assert_eq!(t.transform_by(Mat4::rot(X, Y)), expected);
     }
 }

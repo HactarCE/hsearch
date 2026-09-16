@@ -18,6 +18,10 @@ num-traits.workspace = true
 rand.workspace = true
 rapidhash.workspace = true
 rayon.workspace = true
+hsearch_core.workspace = true
+
+[build-dependencies]
+hsearch_codegen.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
