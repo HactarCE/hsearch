@@ -4,7 +4,7 @@ use std::ops::BitAnd;
 use super::*;
 use crate::util::collect_bits;
 
-include!(concat!(env!("OUT_DIR"), "/v2_stage1.rs"));
+include!(concat!("../generated/v2_stage1.rs"));
 
 /// Stage 1: `I`/`O` separation
 ///

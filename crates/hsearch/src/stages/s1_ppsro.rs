@@ -1,6 +1,6 @@
 use super::*;
 
-include!(concat!(env!("OUT_DIR"), "/stage1.rs"));
+include!(concat!("../generated/stage1.rs"));
 
 /// Stage 1: Partial `P` separation (3x3x2x1 block) + `I`/`O` ridge orientation
 ///

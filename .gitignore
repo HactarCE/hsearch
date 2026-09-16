@@ -2,3 +2,5 @@
 *.hsc
 *.bin
 flamegraph.svg
+
+crates/hsearch/src/generated

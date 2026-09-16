@@ -1,7 +1,7 @@
 use super::*;
 use crate::XyRot;
 
-include!(concat!(env!("OUT_DIR"), "/stage4.rs"));
+include!(concat!("../generated/stage4.rs"));
 
 /// Stage 4: `P`-separation + `I`/`O` edge & corner orientation
 ///

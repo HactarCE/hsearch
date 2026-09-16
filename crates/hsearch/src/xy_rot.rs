@@ -3,6 +3,8 @@ use std::ops::Mul;
 use crate::Axis::{X, Y};
 use crate::{Mat4, Twist};
 
+include!(concat!("generated/xy_rot.rs"));
+
 /// Nontrivial rotation in the XY plane.
 ///
 /// These are used by stage 4 and must be efficient to use to transform a twist
@@ -104,5 +106,3 @@ mod tests {
         }
     }
 }
-
-include!(concat!(env!("OUT_DIR"), "/xy_rot.rs"));

@@ -2,7 +2,7 @@ use std::ops::BitAnd;
 
 use super::*;
 
-include!(concat!(env!("OUT_DIR"), "/stage3.rs"));
+include!(concat!("../generated/stage3.rs"));
 
 /// Stage 3: partial `I`/`O` edge & corner orientation (3x2x2x1 block)
 ///
