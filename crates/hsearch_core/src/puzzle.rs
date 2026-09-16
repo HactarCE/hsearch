@@ -17,6 +17,10 @@ pub static HYPERCUBE_TWISTS: LazyLock<Vec<TwistData>> =
 pub static TWIST_DATA_TO_TWIST: LazyLock<HashMap<TwistData, Twist>> =
     LazyLock::new(|| std::iter::zip(HYPERCUBE_TWISTS.iter().copied(), Twist::iter()).collect());
 
+pub fn all_stickers() -> impl Iterator<Item = Vec4> {
+    Facet::ALL.iter().flat_map(|f| f.stickers())
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum PieceType {
     /// 1 core (0-color piece)
@@ -37,10 +41,15 @@ impl PieceType {
         self as _
     }
 
-    /// Returns an iterator over pieces with this type.
+    /// Returns an iterator over all pieces with this type.
     pub fn iter(self) -> impl Iterator<Item = Vec4> {
         Vec4::region(Vec4([-1; 4]), Vec4([1; 4]))
             .filter(move |v| v.taxicab_norm() == self.sticker_count())
+    }
+
+    /// Returns an iterator over all stickers of all pieces with this type.
+    pub fn all_stickers(self) -> impl Iterator<Item = Vec4> {
+        all_stickers().filter(move |v| v.taxicab_norm() == self.sticker_count() + 1)
     }
 }
 
@@ -238,6 +247,14 @@ impl Facet {
             }
         }
     }
+
+    pub fn stickers(self) -> impl Iterator<Item = Vec4> {
+        let mut min = Vec4([-1; 4]);
+        let mut max = Vec4([1; 4]);
+        min[self.axis()] = self.sign() as i8 * 2;
+        max[self.axis()] = self.sign() as i8 * 2;
+        Vec4::region(min, max)
+    }
 }
 
 /// Twist of an outer layer of the puzzle.
@@ -432,7 +449,7 @@ impl SimplePuzzleSim {
         twists.into_iter().fold(Self::default(), Self::do_twist)
     }
 
-    pub fn to_bits(
+    pub fn pieces_to_bits(
         &self,
         bits_per_piece: u8,
         piece_types: &[PieceType],
@@ -451,6 +468,14 @@ impl SimplePuzzleSim {
                     .map(|(init, att)| map_init_pos_and_attitude(init, att))
             })
             .rfold(0, |a, b| (a << bits_per_piece) | b)
+    }
+
+    /// Returns whether the sticker currently at the given position was
+    /// originally on `test_axis`.
+    pub fn is_sticker_from_axis(&self, sticker_vector: Vec4, test_axis: Axis) -> bool {
+        let (piece_pos, ax) = sticker_vector.unwrap_sticker();
+        let (_init, att) = self.get_piece(piece_pos);
+        att[ax][test_axis] != 0
     }
 
     #[must_use]

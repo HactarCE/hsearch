@@ -93,7 +93,7 @@ impl Stage for Stage4 {
             }
         }
         Self {
-            bits: state.to_bits(
+            bits: state.pieces_to_bits(
                 2,
                 &[PieceType::Corner, PieceType::Edge],
                 |v| (v[W] == 1 && v[Y] == 1) || v[Z] == 1,
@@ -107,8 +107,7 @@ impl Stage for Stage4 {
                             let new_io_sticker_axis = old_io_sticker_axis.transform_by(att);
                             let new_index = (att * init)
                                 .nonzero_axes()
-                                .iter()
-                                .position(|&ax| ax == new_io_sticker_axis)
+                                .position(|ax| ax == new_io_sticker_axis)
                                 .unwrap();
                             3 - new_index as u64
                         }
@@ -117,7 +116,7 @@ impl Stage for Stage4 {
                         W.transform_by(att) as u64
                     }
                 },
-            ) | (state.to_bits(
+            ) | (state.pieces_to_bits(
                 1,
                 &[PieceType::Ridge],
                 |v| (v[W] == 1 && v[Y] == 1) || v[Z] == 1,

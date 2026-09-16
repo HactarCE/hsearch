@@ -51,58 +51,6 @@ pub trait TrieKey:
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Stage1TrieKey(u128);
-
-impl From<Stage1> for Stage1TrieKey {
-    fn from(state: Stage1) -> Self {
-        Stage1TrieKey(state.e_p as u128 | ((state.r_op as u128) << 32))
-    }
-}
-
-impl TrieKey for Stage1TrieKey {
-    const BITS: u8 = 32 + 48;
-
-    fn write_bits(
-        self,
-        bit_count: u8,
-        bitbuffer: &mut bitbuffer::BitWriteStream<'_, bitbuffer::LittleEndian>,
-    ) -> bitbuffer::Result<()> {
-        bitbuffer.write_int(self.0, bit_count as usize)
-    }
-
-    fn read_bits(
-        bit_count: u8,
-        bitbuffer: &mut bitbuffer::BitReadStream<'_, bitbuffer::LittleEndian>,
-    ) -> bitbuffer::Result<Self> {
-        bitbuffer.read_int(bit_count as usize).map(Self)
-    }
-
-    fn lsb(self) -> bool {
-        self.0 & 1 != 0
-    }
-
-    fn matches(self, entry_key: Self, _bit_count: u8) -> bool {
-        self.0 & entry_key.0 == 0
-    }
-
-    fn skip(self, bit_count: u8) -> Self {
-        Self(self.0 >> bit_count)
-    }
-
-    fn truncate(self, bit_count: u8) -> Self {
-        Self(self.0 & ((1 << bit_count) - 1))
-    }
-
-    fn branches(self) -> [bool; 2] {
-        [true, !self.lsb()]
-    }
-
-    fn common_lsb_prefix(self, other: Self) -> u8 {
-        (self.0 ^ other.0).trailing_zeros() as u8
-    }
-}
-
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct V2Stage1TrieKey(U256);
 
 impl From<V2Stage1> for V2Stage1TrieKey {

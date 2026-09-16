@@ -2,7 +2,6 @@ use std::fmt;
 use std::ops::BitAnd;
 
 use super::*;
-use crate::util::collect_bits;
 
 include!(concat!("../generated/v2_stage1.rs"));
 
@@ -58,13 +57,7 @@ impl V2Stage1 {
     fn stickers(piece_type: PieceType) -> impl Iterator<Item = Vec4> {
         Facet::ALL
             .iter()
-            .flat_map(|&f| {
-                let mut min = Vec4([-1; 4]);
-                let mut max = Vec4([1; 4]);
-                min[f.axis()] = f.sign() as i8 * 2;
-                max[f.axis()] = f.sign() as i8 * 2;
-                Vec4::region(min, max)
-            })
+            .flat_map(|f| f.stickers())
             .filter(move |v| v.taxicab_norm() - 1 == piece_type.sticker_count())
     }
     fn ridge_stickers() -> impl Iterator<Item = Vec4> {

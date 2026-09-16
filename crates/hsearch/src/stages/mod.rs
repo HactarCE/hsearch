@@ -1,15 +1,15 @@
 use crate::XyRot;
 use crate::prelude::*;
 
-mod s1_ppsro;
-mod s2_pio1;
-mod s3_pio2;
+mod s1_mid;
+mod s2_left;
+mod s3_count;
 mod s4_psio;
 mod v2_s1_sio;
 
-pub use s1_ppsro::Stage1;
-pub use s2_pio1::Stage2;
-pub use s3_pio2::Stage3;
+pub use s1_mid::Stage1;
+pub use s2_left::Stage2;
+pub use s3_count::Stage3;
 pub use s4_psio::Stage4;
 pub use v2_s1_sio::V2Stage1;
 

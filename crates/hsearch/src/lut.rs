@@ -4,7 +4,7 @@ macro_rules! apply_permutation_lut {
             let input: $int_type = $input;
             match Twist::to_index($twist) {
                 $( $i => $( <$int_type>::rotate_left(input & $mask, $delta) )|* , )*
-                _ => panic!("twist not allowed in this stage"),
+                _ => panic!("twist not allowed in this stage: {}", Twist::data($twist)),
             }
         }
     };

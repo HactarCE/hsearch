@@ -186,7 +186,7 @@ impl<S: SubsetMaskStage> TrieNode<S> {
                     }
                     while let Some((state, d, prev_twists)) = queue.pop() {
                         let d = d + 1;
-                        for twist in Twist::iter() {
+                        for &twist in twists {
                             if let Some(new_prev_twists) = prev_twists.do_twist(twist) {
                                 let new_state = state.do_twist(twist);
                                 match entries.entry(S::Key::from(new_state)) {

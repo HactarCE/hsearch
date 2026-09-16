@@ -12,15 +12,17 @@ pub use trie::PruningTrie;
 pub use trie_key::*;
 
 pub struct PruningTables {
-    pub s1_ppsro: LazyLock<PruningTrie<Stage1>>,
-    pub s4_psio: LazyLock<PruningMap>,
+    pub s1_mid: LazyLock<PruningTrie<Stage1>>,
+    pub s2_left: LazyLock<PruningTrie<Stage2>>,
 }
 
 pub static PRUNING_TABLES: PruningTables = PruningTables {
-    s1_ppsro: LazyLock::new(|| {
-        PruningTrie::<Stage1>::load_or_generate(&[Stage1::TARGET], &Twist::ALL, 4, "s1_ppsro")
+    s1_mid: LazyLock::new(|| {
+        PruningTrie::<Stage1>::load_or_generate(&[Stage1::TARGET], &Twist::ALL, 4, "s1_mid")
     }),
-    s4_psio: LazyLock::new(|| PruningMap::load_or_generate::<Stage4>(9, "s4_psio")),
+    s2_left: LazyLock::new(|| {
+        PruningTrie::<Stage2>::load_or_generate(&[Stage2::TARGET], &Stage2::TWISTS, 3, "s1_left")
+    }),
 };
 
 fn thread_local_bump_allocator() -> &'static bumpalo::Bump {

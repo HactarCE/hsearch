@@ -88,7 +88,7 @@ fn bench_pruning_trie(c: &mut Criterion) {
             .copied()
             .collect_vec(),
     );
-    assert!(init_state.is_solved());
+    assert!(init_state.is_target_solved());
 
     for prune_depth in [4] {
         let pruning_trie = PruningTrie::<Stage1>::load_or_generate(

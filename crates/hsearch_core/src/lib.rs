@@ -1,6 +1,7 @@
 mod group;
 mod linalg;
 mod puzzle;
+pub mod stage_utils;
 mod twist;
 mod util;
 
@@ -12,3 +13,4 @@ pub use puzzle::{
     Facet, HYPERCUBE_TWISTS, PieceType, Sign, SimplePuzzleSim, TWIST_DATA_TO_TWIST, TwistData,
 };
 pub use twist::{Twist, TwistSet};
+pub use util::collect_bits;

@@ -2,6 +2,7 @@ use std::fmt;
 use std::ops::RangeInclusive;
 
 use itertools::Itertools;
+use rayon::iter::IntoParallelIterator;
 use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::prelude::*;
@@ -22,16 +23,17 @@ impl fmt::Display for NoSolution {
 }
 
 pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
-    let s1_prune = &*PRUNING_TABLES.s1_ppsro;
-    let s4_prune = &*PRUNING_TABLES.s4_psio;
+    let s1_prune = &*PRUNING_TABLES.s1_mid;
+    let s2_prune = &*PRUNING_TABLES.s2_left;
 
     let untransformed_partial = Partial::new(scramble);
 
     let mut partials = itertools::iproduct!(
-        // try doing P separation along a different axis
-        Axis::ALL.map(|src| Mat4::rot(src, W)),
-        // try leaving a different facet unsolved instead of F
-        [R, L, U, D, F, B].map(|f| f.mat4_to(F)),
+        // replace M slice with any other slice
+        Axis::ALL.map(|src| Mat4::rot(src, X)),
+        // replace I facet with any other facet around try leaving a different facet unsolved instead of F
+        [U, D, F, B, O, I].map(|f| f.mat4_to(I)),
+        // TODO: do "alternative I facet" as postprocessing, with multiple targets
     )
     .map(|(alternative_p_sep, alternative_f_facet)| alternative_f_facet * alternative_p_sep)
     .map(|m| untransformed_partial.transform_by(m))
@@ -40,94 +42,111 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     println!("Stage 1");
     Iddfs::new::<Stage1>(
         &Twist::iter().collect_vec(),
-        |s| s.is_solved(),
+        |s| s.is_target_solved(),
         |s, d| s1_prune.query_should_prune(s.into(), d),
         3..=6,
     )
     .iddfs_extend(&mut partials)?;
-    cleanup_and_display_solutions("stage 1", &mut partials, false);
 
-    println!("Stage 2.1");
+    // Optionally swap R/L (TODO: do this as postprocessing, with multiple targets)
+    partials = partials
+        .into_par_iter()
+        .flat_map(|partial| [partial.transform_by(Mat4::rot180(X, Y)), partial])
+        .collect();
+
+    cleanup_and_display_solutions("stage 1", &mut partials, true);
+
+    println!("Stage 2");
     Iddfs::new::<Stage2>(
         &Stage2::TWISTS,
-        |s| s.is_target_solved(Stage2::TARGET1),
-        |_, _| false,
-        1..=4,
+        |s| s.is_target_solved(),
+        |s, d| s2_prune.query_should_prune(s.into(), d),
+        1..=6,
     )
     .iddfs_extend(&mut partials)?;
-    cleanup_and_display_solutions("stage 2.1", &mut partials, false);
+    cleanup_and_display_solutions("stage 2", &mut partials, true);
 
-    println!("Stage 2.2");
-    Iddfs::new::<Stage2>(
-        &Stage2::TWISTS,
-        |s| s.is_target_solved(Stage2::TARGET2),
-        |_, _| false,
-        1..=4,
-    )
-    .iddfs_extend(&mut partials)?;
-    cleanup_and_display_solutions("stage 2.2", &mut partials, false);
-
-    println!("Stage 2.3");
-    Iddfs::new::<Stage2>(
-        &Stage2::TWISTS,
-        |s| s.is_target_solved(Stage2::TARGET3),
-        |_, _| false,
-        1..=4,
-    )
-    .iddfs_extend(&mut partials)?;
-    cleanup_and_display_solutions("stage 2.3", &mut partials, false);
-
-    // Normalize so that the block is on `I`
-    partials.par_iter_mut().for_each(|partial| {
-        if Stage2::with_setup(&partial.twists)
-            .which_target3()
-            .expect("bad solution")
-            == Sign::Neg
-        {
-            *partial = partial.transform_by(Mat4::refl(W));
-        }
-    });
-
-    println!("Stage 3.1");
+    println!("Stage 3");
     Iddfs::new::<Stage3>(
         &Stage3::TWISTS,
-        |s| s.is_target_solved(Stage3::TARGET1),
+        |s| s.is_target_solved(),
         |_, _| false,
         1..=4,
     )
     .iddfs_extend(&mut partials)?;
-    cleanup_and_display_solutions("stage 3.1", &mut partials, false);
+    cleanup_and_display_solutions("stage 3", &mut partials, true);
 
-    println!("Stage 3.2");
-    Iddfs::new::<Stage3>(
-        &Stage3::TWISTS,
-        |s| s.is_target_solved(Stage3::TARGET2),
-        |_, _| false,
-        1..=4,
-    )
-    .iddfs_extend(&mut partials)?;
+    // println!("Stage 2.2");
+    // Iddfs::new::<Stage2>(
+    //     &Stage2::TWISTS,
+    //     |s| s.is_target_solved(Stage2::TARGET2),
+    //     |_, _| false,
+    //     1..=4,
+    // )
+    // .iddfs_extend(&mut partials)?;
+    // cleanup_and_display_solutions("stage 2.2", &mut partials, false);
 
-    // Normalize so that unsolved `I`/`O` region is on `UO`.
-    partials.par_iter_mut().for_each(|partial| {
-        let secondary_facet = Stage3::with_setup(&partial.twists)
-            .which_target2()
-            .expect("bad solution");
-        if secondary_facet != Facet::U {
-            *partial = partial.transform_by(secondary_facet.mat4_to(U));
-        }
-    });
+    // println!("Stage 2.3");
+    // Iddfs::new::<Stage2>(
+    //     &Stage2::TWISTS,
+    //     |s| s.is_target_solved(Stage2::TARGET3),
+    //     |_, _| false,
+    //     1..=4,
+    // )
+    // .iddfs_extend(&mut partials)?;
+    // cleanup_and_display_solutions("stage 2.3", &mut partials, false);
 
-    cleanup_and_display_solutions("stage 3.2", &mut partials, true);
+    // // Normalize so that the block is on `I`
+    // partials.par_iter_mut().for_each(|partial| {
+    //     if Stage2::with_setup(&partial.twists)
+    //         .which_target3()
+    //         .expect("bad solution")
+    //         == Sign::Neg
+    //     {
+    //         *partial = partial.transform_by(Mat4::refl(W));
+    //     }
+    // });
 
-    println!("Stage 4");
-    Iddfs::new::<Stage4>(
-        &Stage4::TWISTS,
-        |s| s.is_target_solved(Stage4::SOLVED),
-        |s, d| s4_prune.query_should_prune(s.key(), d),
-        1..=13,
-    )
-    .iddfs_extend(&mut partials)?;
-    cleanup_and_display_solutions("stage 4", &mut partials, true);
+    // println!("Stage 3.1");
+    // Iddfs::new::<Stage3>(
+    //     &Stage3::TWISTS,
+    //     |s| s.is_target_solved(Stage3::TARGET1),
+    //     |_, _| false,
+    //     1..=4,
+    // )
+    // .iddfs_extend(&mut partials)?;
+    // cleanup_and_display_solutions("stage 3.1", &mut partials, false);
+
+    // println!("Stage 3.2");
+    // Iddfs::new::<Stage3>(
+    //     &Stage3::TWISTS,
+    //     |s| s.is_target_solved(Stage3::TARGET2),
+    //     |_, _| false,
+    //     1..=4,
+    // )
+    // .iddfs_extend(&mut partials)?;
+
+    // // Normalize so that unsolved `I`/`O` region is on `UO`.
+    // partials.par_iter_mut().for_each(|partial| {
+    //     let secondary_facet = Stage3::with_setup(&partial.twists)
+    //         .which_target2()
+    //         .expect("bad solution");
+    //     if secondary_facet != Facet::U {
+    //         *partial = partial.transform_by(secondary_facet.mat4_to(U));
+    //     }
+    // });
+
+    // cleanup_and_display_solutions("stage 3.2", &mut partials, true);
+
+    // println!("Stage 4");
+    // Iddfs::new::<Stage4>(
+    //     &Stage4::TWISTS,
+    //     |s| s.is_target_solved(Stage4::SOLVED),
+    //     |s, d| s4_prune.query_should_prune(s.key(), d),
+    //     1..=13,
+    // )
+    // .iddfs_extend(&mut partials)?;
+    // cleanup_and_display_solutions("stage 4", &mut partials, true);
 
     Ok(())
 }

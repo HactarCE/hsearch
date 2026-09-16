@@ -186,8 +186,8 @@ impl Vec4 {
     /// Returns a list of axes that are nonzero in the vector.
     ///
     /// Axes are returned in canonical order.
-    pub fn nonzero_axes(self) -> Vec<Axis> {
-        Axis::ALL.into_iter().filter(|&ax| self[ax] != 0).collect()
+    pub fn nonzero_axes(self) -> impl Iterator<Item = Axis> {
+        Axis::ALL.into_iter().filter(move |&ax| self[ax] != 0)
     }
 
     /// Returns the first axis from `order` that is nonzero in the vector, or
