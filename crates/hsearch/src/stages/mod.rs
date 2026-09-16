@@ -1,4 +1,5 @@
-use crate::{XyRot, prelude::*};
+use crate::XyRot;
+use crate::prelude::*;
 
 mod s1_ppsro;
 mod s2_pio1;
@@ -61,11 +62,11 @@ pub trait StageKeyU64: Stage {
 mod tests {
     use itertools::Itertools;
     use pretty_assertions::assert_eq;
-    use rand::{SeedableRng, seq::IndexedRandom};
-
-    use crate::parse_twists;
+    use rand::SeedableRng;
+    use rand::seq::IndexedRandom;
 
     use super::*;
+    use crate::parse_twists;
 
     #[test]
     fn test_all_stage_defaults() {

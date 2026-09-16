@@ -1,9 +1,10 @@
-use crate::Mat4;
-use std::{ops::Index, sync::LazyLock};
+use std::ops::Index;
+use std::sync::LazyLock;
 
 use itertools::Itertools;
 
-use crate::{TransformByMat4, puzzle::*};
+use crate::puzzle::*;
+use crate::{Mat4, TransformByMat4};
 
 /// Twist of the puzzle.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -73,9 +74,8 @@ impl TwistSet {
 
 #[cfg(test)]
 mod tests {
-    use crate::Axis::{X, Y};
-
     use super::*;
+    use crate::Axis::{X, Y};
 
     #[test]
     fn test_twist_iter() {

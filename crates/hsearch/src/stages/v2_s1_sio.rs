@@ -1,8 +1,8 @@
-use std::{fmt, ops::BitAnd};
-
-use crate::util::collect_bits;
+use std::fmt;
+use std::ops::BitAnd;
 
 use super::*;
+use crate::util::collect_bits;
 
 include!(concat!(env!("OUT_DIR"), "/v2_stage1.rs"));
 

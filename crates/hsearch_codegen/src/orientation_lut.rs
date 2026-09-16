@@ -1,6 +1,5 @@
-use itertools::Itertools;
-
 use hsearch_core::{HYPERCUBE_TWISTS, Mat4, TwistData, Vec4};
+use itertools::Itertools;
 
 const INDENT: &str = "                ";
 

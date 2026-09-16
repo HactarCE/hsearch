@@ -2,8 +2,7 @@ use std::fmt;
 use std::ops::RangeInclusive;
 
 use itertools::Itertools;
-use rayon::iter::IntoParallelRefMutIterator;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::prelude::*;
 use crate::stages::*;
@@ -29,8 +28,10 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     let untransformed_partial = Partial::new(scramble);
 
     let mut partials = itertools::iproduct!(
-        Axis::ALL.map(|src| Mat4::rot(src, W)), // try doing P separation along a different axis
-        [R, L, U, D, F, B].map(|f| f.mat4_to(F)), // try leaving a different facet unsolved instead of F
+        // try doing P separation along a different axis
+        Axis::ALL.map(|src| Mat4::rot(src, W)),
+        // try leaving a different facet unsolved instead of F
+        [R, L, U, D, F, B].map(|f| f.mat4_to(F)),
     )
     .map(|(alternative_p_sep, alternative_f_facet)| alternative_f_facet * alternative_p_sep)
     .map(|m| untransformed_partial.transform_by(m))

@@ -1,9 +1,7 @@
 use std::ops::Mul;
 
-use crate::{
-    Axis::{X, Y},
-    Mat4, Twist,
-};
+use crate::Axis::{X, Y};
+use crate::{Mat4, Twist};
 
 /// Nontrivial rotation in the XY plane.
 ///
@@ -84,7 +82,6 @@ impl Mul for XyRot {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::TransformByMat4;
 
     #[test]

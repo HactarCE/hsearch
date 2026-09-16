@@ -1,6 +1,6 @@
-use std::io::Write;
+use std::collections::HashMap;
+use std::io::{BufRead, Write};
 use std::ops::{Deref, DerefMut};
-use std::{collections::HashMap, io::BufRead};
 
 use bitbuffer::{BitReadBuffer, BitReadStream, BitWriteStream, LittleEndian};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
@@ -341,7 +341,6 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-
     use crate::stages::Stage1;
 
     #[test]

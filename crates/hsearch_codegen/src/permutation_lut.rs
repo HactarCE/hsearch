@@ -1,9 +1,7 @@
-use std::collections::BTreeMap;
-use std::collections::HashMap;
-
-use itertools::Itertools;
+use std::collections::{BTreeMap, HashMap};
 
 use hsearch_core::{HYPERCUBE_TWISTS, Twist, TwistData, Vec4};
+use itertools::Itertools;
 
 const INDENT: &str = "                ";
 

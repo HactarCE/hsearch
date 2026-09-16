@@ -1,10 +1,9 @@
-use std::{fmt::Write, path::Path};
+use std::fmt::Write;
+use std::path::Path;
 
-use hsearch_core::{
-    Axis::{W, X, Y, Z},
-    Facet::{D, F, I, L, O, R, U},
-    Group, IDENT, Mat4, PieceType, TransformByMat4, Twist, TwistData, Vec4,
-};
+use hsearch_core::Axis::{W, X, Y, Z};
+use hsearch_core::Facet::{D, F, I, L, O, R, U};
+use hsearch_core::{Group, IDENT, Mat4, PieceType, TransformByMat4, Twist, TwistData, Vec4};
 use itertools::Itertools;
 
 mod orientation_lut;

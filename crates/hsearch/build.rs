@@ -1,4 +1,5 @@
-use std::{env, path::PathBuf};
+use std::env;
+use std::path::PathBuf;
 
 fn main() {
     for path in ["../hsearch_core/src", "../hsearch_codegen/src"] {

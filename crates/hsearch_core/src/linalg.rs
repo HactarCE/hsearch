@@ -2,8 +2,7 @@
 //! computations that are not performance-sensitive.
 
 use std::fmt;
-use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
-use std::ops::{Index, IndexMut};
+use std::ops::{Add, AddAssign, Index, IndexMut, Mul, MulAssign, Neg, Sub, SubAssign};
 
 /// Coordinate type.
 pub type Coord = i8;

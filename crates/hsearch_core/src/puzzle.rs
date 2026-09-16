@@ -1,12 +1,14 @@
 //! Unoptimized puzzle implementation for generating lookup tables.
 
-use std::{collections::HashMap, fmt, sync::LazyLock};
-
-use itertools::Itertools;
-
-use crate::{Twist, linalg::*};
+use std::collections::HashMap;
+use std::fmt;
+use std::sync::LazyLock;
 
 pub use Facet::{B, D, F, I, L, O, R, U};
+use itertools::Itertools;
+
+use crate::Twist;
+use crate::linalg::*;
 
 /// List of all twists on a hypercube puzzle.
 pub static HYPERCUBE_TWISTS: LazyLock<Vec<TwistData>> =
@@ -409,7 +411,8 @@ static NAME_TO_TWIST: LazyLock<HashMap<Vec<Facet>, TwistData>> = LazyLock::new(|
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct SimplePuzzleSim {
-    /// For each current piece location: initial piece location, current attitude.
+    /// For each current piece location: initial piece location, current
+    /// attitude.
     pub pieces: [(Vec4, Mat4); 81],
 }
 

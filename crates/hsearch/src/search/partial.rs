@@ -1,6 +1,8 @@
-use std::{collections::HashMap, fmt};
+use std::collections::HashMap;
+use std::fmt;
 
-use crate::{XyRot, prelude::*, twists_to_string};
+use crate::prelude::*;
+use crate::{XyRot, twists_to_string};
 
 pub fn dedup_partials(partials: &mut Vec<Partial>) {
     let old_partial_count = partials.len();
@@ -44,7 +46,8 @@ pub struct Partial {
     pub scramble_rot: Mat4,
     /// Scramble and solve concatenated.
     ///
-    /// Applying these twists to a solved puzzle results in the latest puzzle state.
+    /// Applying these twists to a solved puzzle results in the latest puzzle
+    /// state.
     pub twists: Vec<Twist>,
     /// Indices in `twists` that separate the scramble from the solution, and
     /// that separate the various stages/steps.

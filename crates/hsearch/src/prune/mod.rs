@@ -1,6 +1,7 @@
 use std::sync::LazyLock;
 
-use crate::{Twist, stages::*};
+use crate::Twist;
+use crate::stages::*;
 
 mod map;
 mod trie;

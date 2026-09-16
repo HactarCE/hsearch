@@ -1,13 +1,14 @@
 #![allow(unused_crate_dependencies)]
 
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
-use hsearch::{SCRAMBLE_LEN, prelude::*, stages::*};
-use itertools::Itertools;
-use rand::{
-    SeedableRng,
-    seq::{IndexedRandom, IteratorRandom},
-};
 use std::hint::black_box;
+
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use hsearch::SCRAMBLE_LEN;
+use hsearch::prelude::*;
+use hsearch::stages::*;
+use itertools::Itertools;
+use rand::SeedableRng;
+use rand::seq::{IndexedRandom, IteratorRandom};
 
 criterion_main!(benches);
 criterion_group!(benches, criterion_benchmark);

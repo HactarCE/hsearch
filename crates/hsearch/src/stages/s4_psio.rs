@@ -1,6 +1,5 @@
-use crate::XyRot;
-
 use super::*;
+use crate::XyRot;
 
 include!(concat!(env!("OUT_DIR"), "/stage4.rs"));
 

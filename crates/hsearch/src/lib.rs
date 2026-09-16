@@ -123,10 +123,11 @@ pub use prelude::*;
 
 /// Common imports.
 pub mod prelude {
+    pub use hsearch_core::*;
+
     pub use crate::Stage;
     pub use crate::canonical::PrevTwists;
     pub use crate::prune::*;
-    pub use hsearch_core::*;
 }
 
 pub const SCRAMBLE_LEN: usize = 50;

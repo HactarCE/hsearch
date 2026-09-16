@@ -1,4 +1,5 @@
-use bnum::{cast::As, types::U256};
+use bnum::cast::As;
+use bnum::types::U256;
 use num_traits::{One, Zero};
 
 use super::*;

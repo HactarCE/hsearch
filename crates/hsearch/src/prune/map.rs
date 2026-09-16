@@ -1,7 +1,5 @@
-use std::{
-    collections::VecDeque,
-    io::{BufRead, Write},
-};
+use std::collections::VecDeque;
+use std::io::{BufRead, Write};
 
 use bitbuffer::{BitReadBuffer, BitReadStream, BitWriteStream, LittleEndian};
 use itertools::Itertools;
@@ -142,8 +140,8 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-
-    use crate::{Stage, parse_twists, stages::Stage4};
+    use crate::stages::Stage4;
+    use crate::{Stage, parse_twists};
 
     #[test]
     fn test_pruning_trie_ser_deser() {
