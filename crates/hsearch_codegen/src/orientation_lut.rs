@@ -2,6 +2,8 @@ use itertools::Itertools;
 
 use hsearch_core::{HYPERCUBE_TWISTS, Mat4, TwistData, Vec4};
 
+const INDENT: &str = "                ";
+
 /// Lookup table for updating piece orientations.
 pub struct OrientationLut {
     piece_count: usize,
@@ -75,12 +77,13 @@ impl OrientationLut {
         let mut s = String::new();
         s += &format!("crate::lut::update_orientations_u{int_width}({state_var}, {{\n");
         s += &format!(
-            "    static LUT: [[u{int_width}; 3]; {}] = [\n",
+            "{INDENT}    static LUT: [[u{int_width}; 3]; {}] = [\n",
             self.table.len(),
         );
 
         for row in &self.table {
             let Some(row) = row else {
+                s += INDENT;
                 s += "        [0, 0, 0],\n";
                 continue;
             };
@@ -124,12 +127,12 @@ impl OrientationLut {
             assert_eq!(0, preserved_bits & ma);
             assert_eq!(0, preserved_bits & mb);
             ma |= preserved_bits;
-            s += &format!("        [0x{m1:X}, 0x{ma:X}, 0x{mb:X}],\n");
+            s += &format!("{INDENT}        [0x{m1:X}, 0x{ma:X}, 0x{mb:X}],\n");
         }
 
-        s += &format!("    ];\n");
-        s += &format!("    LUT[{twist_var}.to_index()]\n");
-        s += "})\n";
+        s += &format!("{INDENT}    ];\n");
+        s += &format!("{INDENT}    LUT[{twist_var}.to_index()]\n");
+        s += &format!("{INDENT}}})");
         s
     }
 }

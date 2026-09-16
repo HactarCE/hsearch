@@ -1,6 +1,19 @@
+use hsearch_core::{PieceType, Vec4};
 use itertools::Itertools;
 
-pub(crate) fn preserved_bits(
+pub fn ridges() -> impl Iterator<Item = Vec4> {
+    PieceType::Ridge.iter()
+}
+
+pub fn edges() -> impl Iterator<Item = Vec4> {
+    PieceType::Edge.iter()
+}
+
+pub fn corners() -> impl Iterator<Item = Vec4> {
+    PieceType::Corner.iter()
+}
+
+pub fn preserved_bits(
     int_width: usize,
     bit_offset: usize,
     bits_per_element: usize,
@@ -12,7 +25,7 @@ pub(crate) fn preserved_bits(
         & 1_u128.unbounded_shl(int_width as u32).wrapping_sub(1)
 }
 
-pub(crate) fn collect_bits<B: num_traits::PrimInt>(bits: impl IntoIterator<Item = bool>) -> B {
+pub fn collect_bits<B: num_traits::PrimInt>(bits: impl IntoIterator<Item = bool>) -> B {
     bits.into_iter()
         .positions(|b| b)
         .map(|i| B::one() << i)

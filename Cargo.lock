@@ -375,6 +375,7 @@ dependencies = [
  "hsearch_core",
  "itertools 0.14.0",
  "num-traits",
+ "textwrap",
 ]
 
 [[package]]
@@ -808,6 +809,12 @@ dependencies = [
  "quote",
  "unicode-ident",
 ]
+
+[[package]]
+name = "textwrap"
+version = "0.16.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ecfad6c3abc80a577f2b91c1e412ee57e7a060d430b553c1b0c940974ebcd49"
 
 [[package]]
 name = "thiserror"

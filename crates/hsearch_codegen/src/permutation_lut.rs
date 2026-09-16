@@ -5,6 +5,8 @@ use itertools::Itertools;
 
 use hsearch_core::{HYPERCUBE_TWISTS, Twist, TwistData, Vec4};
 
+const INDENT: &str = "                ";
+
 /// Lookup table for permuting pieces.
 pub struct PermutationLut {
     piece_count: usize,
@@ -62,28 +64,32 @@ impl PermutationLut {
         let element_mask =
             |p| ((1_u128 << bits_per_element) - 1) << (p * bits_per_element + bit_offset);
 
-        let mut s = String::new();
-        s += &format!("apply_permutation_lut!(u{int_width}, {state_var}, {twist_var}, [\n");
-        for (i, opt_row) in self.table.iter().enumerate() {
-            let Some(row) = opt_row else { continue };
-            let mut delta_masks = BTreeMap::<usize, u128>::new();
-            delta_masks.insert(0, preserved_bits);
-            for (src, &dst) in row.iter().enumerate() {
-                let mask = element_mask(src);
-                let src = src * bits_per_element + bit_offset;
-                let dst = dst * bits_per_element + bit_offset;
-                let delta = dst.wrapping_sub(src) % int_width;
-                *delta_masks.entry(delta).or_default() |= mask;
-            }
-            s += &format!("    {i} => [");
-            s += &delta_masks
-                .iter()
-                .map(|(delta, mask)| format!("(&0x{mask:X}<<{delta})"))
-                .join("|");
-            s += "],\n";
-        }
-        s += "])";
-        s
+        let rows = self
+            .table
+            .iter()
+            .enumerate()
+            .filter_map(|(i, opt_row)| {
+                let row = opt_row.as_ref()?;
+                let mut delta_masks = BTreeMap::<usize, u128>::new();
+                delta_masks.insert(0, preserved_bits);
+                for (src, &dst) in row.iter().enumerate() {
+                    let mask = element_mask(src);
+                    let src = src * bits_per_element + bit_offset;
+                    let dst = dst * bits_per_element + bit_offset;
+                    let delta = dst.wrapping_sub(src) % int_width;
+                    *delta_masks.entry(delta).or_default() |= mask;
+                }
+                let shift_masks = delta_masks
+                    .iter()
+                    .map(|(delta, mask)| format!("(&0x{mask:X}<<{delta})"))
+                    .join("|");
+                Some(format!("{INDENT}    {i} => [{shift_masks}],"))
+            })
+            .join("\n");
+
+        format!(
+            "apply_permutation_lut!(u{int_width}, {state_var}, {twist_var}, [\n{rows}\n{INDENT}])"
+        )
     }
 
     /// Returns the twists supported by the permutation.
