@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use hsearch_core::{HYPERCUBE_TWISTS, Twist, TwistData, Vec4};
+use hsearch_core::{Twist, TwistSet, Vec4};
 use itertools::Itertools;
 
 const INDENT: &str = "                ";
@@ -16,22 +16,21 @@ impl PermutationLut {
     /// Generates a lookup table that permutes pieces according to each twist.
     pub fn new(pieces: impl IntoIterator<Item = Vec4>) -> Self {
         Self::with_action(pieces, |t, p| {
-            Some(if t.affects(p) { t.rot * p } else { p })
+            Some(if t.affects(p) { t.rot() * p } else { p })
         })
     }
 
     pub fn with_action(
         pieces: impl IntoIterator<Item = Vec4>,
-        mut act: impl FnMut(TwistData, Vec4) -> Option<Vec4>,
+        mut act: impl FnMut(Twist, Vec4) -> Option<Vec4>,
     ) -> Self {
         let pieces = pieces.into_iter().collect_vec();
         let point_to_index: HashMap<Vec4, usize> =
             pieces.iter().enumerate().map(|(i, &p)| (p, i)).collect();
         Self {
             piece_count: pieces.len(),
-            table: HYPERCUBE_TWISTS
-                .iter()
-                .map(|&t| {
+            table: Twist::iter()
+                .map(|t| {
                     pieces
                         .iter()
                         .map(|&p| point_to_index.get(&act(t, p)?).copied())
@@ -91,9 +90,7 @@ impl PermutationLut {
     }
 
     /// Returns the twists supported by the permutation.
-    pub fn allowed_twists(&self) -> Vec<Twist> {
-        Twist::iter()
-            .filter(|t| self.table[t.to_index()].is_some())
-            .collect()
+    pub fn allowed_twists(&self) -> TwistSet {
+        TwistSet::new(|t| self.table[t.index() as usize].is_some())
     }
 }

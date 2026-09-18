@@ -1,4 +1,4 @@
-use hsearch_core::{HYPERCUBE_TWISTS, Mat4, TwistData, Vec4};
+use hsearch_core::{Mat4, Twist, Vec4};
 use itertools::Itertools;
 
 const INDENT: &str = "                ";
@@ -25,22 +25,21 @@ impl OrientationLut {
         act: impl Fn(Mat4, Vec4, u8) -> u8,
     ) -> Self {
         Self::with_action(pieces, orientation_count, |t, p, o| {
-            Some(if t.affects(p) { act(t.rot, p, o) } else { o })
+            Some(if t.affects(p) { act(t.rot(), p, o) } else { o })
         })
     }
 
     pub fn with_action(
         pieces: impl IntoIterator<Item = Vec4>,
         orientation_count: u8,
-        act: impl Fn(TwistData, Vec4, u8) -> Option<u8>,
+        act: impl Fn(Twist, Vec4, u8) -> Option<u8>,
     ) -> Self {
         let pieces = pieces.into_iter().collect_vec();
         Self {
             piece_count: pieces.len(),
             orientation_count,
-            table: HYPERCUBE_TWISTS
-                .iter()
-                .map(|&t| {
+            table: Twist::iter()
+                .map(|t| {
                     pieces
                         .iter()
                         .map(|&p| (0..orientation_count).map(|o| act(t, p, o)).collect())
@@ -130,7 +129,7 @@ impl OrientationLut {
         }
 
         s += &format!("{INDENT}    ];\n");
-        s += &format!("{INDENT}    LUT[{twist_var}.to_index()]\n");
+        s += &format!("{INDENT}    LUT[{twist_var}.index() as usize]\n");
         s += &format!("{INDENT}}})");
         s
     }

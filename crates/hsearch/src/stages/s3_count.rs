@@ -75,10 +75,6 @@ impl BitAnd for Stage3 {
 }
 
 impl Stage3 {
-    const fn new(r: u16, ec: u64) -> Self {
-        Self { r, ec }
-    }
-
     pub fn is_target_solved(self) -> bool {
         let Self { r, ec } = self;
 
@@ -91,6 +87,12 @@ impl Stage3 {
 }
 
 impl Stage for Stage3 {
+    const TWISTS: TwistSet = Self::GENERATED_TWISTS;
+
+    fn do_twist(self, twist: Twist) -> Self {
+        self.generated_do_twist(twist)
+    }
+
     fn from_state(state: SimplePuzzleSim) -> Self {
         let is_in_stage3 = |v: Vec4| v[X] == 1 || v[W] == -1;
 
@@ -112,10 +114,6 @@ impl Stage for Stage3 {
                 },
             ),
         }
-    }
-
-    fn do_twist(self, twist: Twist) -> Self {
-        self.generated_do_twist(twist)
     }
 }
 

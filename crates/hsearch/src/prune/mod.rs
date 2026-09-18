@@ -1,6 +1,5 @@
 use std::sync::LazyLock;
 
-use crate::Twist;
 use crate::stages::*;
 
 mod map;
@@ -18,10 +17,10 @@ pub struct PruningTables {
 
 pub static PRUNING_TABLES: PruningTables = PruningTables {
     s1_mid: LazyLock::new(|| {
-        PruningTrie::<Stage1>::load_or_generate(&[Stage1::TARGET], &Twist::ALL, 4, "s1_mid")
+        PruningTrie::<Stage1>::load_or_generate(&[Stage1::TARGET], Stage1::TWISTS, 4, "s1_mid")
     }),
     s2_left: LazyLock::new(|| {
-        PruningTrie::<Stage2>::load_or_generate(&[Stage2::TARGET], &Stage2::TWISTS, 3, "s1_left")
+        PruningTrie::<Stage2>::load_or_generate(&[Stage2::TARGET], Stage2::TWISTS, 3, "s1_left")
     }),
 };
 

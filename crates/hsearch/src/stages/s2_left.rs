@@ -65,6 +65,12 @@ impl Stage2 {
 }
 
 impl Stage for Stage2 {
+    const TWISTS: TwistSet = Self::GENERATED_TWISTS;
+
+    fn do_twist(self, twist: Twist) -> Self {
+        self.generated_do_twist(twist)
+    }
+
     fn from_state(state: SimplePuzzleSim) -> Self {
         let is_in_stage2 = |v: Vec4| v[X] != 0 || v[W] < 0;
 
@@ -82,10 +88,6 @@ impl Stage for Stage2 {
 
         let re = r | (e << 16);
         Self { re, c }
-    }
-
-    fn do_twist(self, twist: Twist) -> Self {
-        self.generated_do_twist(twist)
     }
 }
 

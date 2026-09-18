@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 
 use itertools::Itertools;
 use rayon::iter::IntoParallelIterator;
-use rayon::iter::{IntoParallelRefIterator, IntoParallelRefMutIterator, ParallelIterator};
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::prelude::*;
 use crate::stages::*;
@@ -41,7 +41,7 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
 
     println!("Stage 1");
     Iddfs::new::<Stage1>(
-        &Twist::iter().collect_vec(),
+        Stage1::TWISTS,
         |s| s.is_target_solved(),
         |s, d| s1_prune.query_should_prune(s.into(), d),
         3..=6,
@@ -58,7 +58,7 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
 
     println!("Stage 2");
     Iddfs::new::<Stage2>(
-        &Stage2::TWISTS,
+        Stage2::TWISTS,
         |s| s.is_target_solved(),
         |s, d| s2_prune.query_should_prune(s.into(), d),
         1..=6,
@@ -68,7 +68,7 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
 
     println!("Stage 3");
     Iddfs::new::<Stage3>(
-        &Stage3::TWISTS,
+        Stage3::TWISTS,
         |s| s.is_target_solved(),
         |_, _| false,
         1..=4,
@@ -182,7 +182,7 @@ pub struct Iddfs<SF, PF> {
 
 impl<SF, PF> Iddfs<SF, PF> {
     pub fn new<S>(
-        twist_subset: &[Twist],
+        twist_subset: TwistSet,
         is_solved: SF,
         should_prune: PF,
         depth_range: RangeInclusive<u8>,
@@ -217,7 +217,7 @@ impl<SF, PF> Iddfs<SF, PF> {
                     self.dfs(init, PrevTwists::new(), depth, &mut vec![], &mut solutions);
                     solutions
                         .into_iter()
-                        .map(|new_segment| partial.extend::<S>(&new_segment))
+                        .map(|new_segment| partial.push_segment::<S>(&new_segment))
                         .collect_vec()
                 })
                 .collect();

@@ -60,6 +60,12 @@ impl Stage1 {
 }
 
 impl Stage for Stage1 {
+    const TWISTS: TwistSet = Self::GENERATED_TWISTS;
+
+    fn do_twist(self, twist: Twist) -> Self {
+        self.generated_do_twist(twist)
+    }
+
     fn from_state(state: SimplePuzzleSim) -> Self {
         Self {
             e: state.pieces_to_bits(
@@ -78,10 +84,6 @@ impl Stage for Stage1 {
                 },
             ),
         }
-    }
-
-    fn do_twist(self, twist: Twist) -> Self {
-        self.generated_do_twist(twist)
     }
 }
 

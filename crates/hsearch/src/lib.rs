@@ -117,7 +117,6 @@ mod prune;
 mod search;
 pub mod stages;
 mod util;
-mod xy_rot;
 
 pub use prelude::*;
 
@@ -134,5 +133,4 @@ pub const SCRAMBLE_LEN: usize = 50;
 
 pub use search::solve;
 pub use stages::*;
-pub use util::{parse_twists, scramble, twists_to_string};
-pub use xy_rot::XyRot;
+pub use util::scramble;

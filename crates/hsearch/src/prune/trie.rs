@@ -3,6 +3,7 @@ use std::io::{BufRead, Write};
 use std::ops::{Deref, DerefMut};
 
 use bitbuffer::{BitReadBuffer, BitReadStream, BitWriteStream, LittleEndian};
+use hsearch_core::TwistSet;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::{PrevTwists, SubsetMaskStage, TrieKey, Twist};
@@ -35,7 +36,7 @@ impl<S: SubsetMaskStage> PruningTrie<S> {
     /// Prompts the user before saving a new file.
     pub fn load_or_generate(
         targets: &[S],
-        twists: &[Twist],
+        twists: TwistSet,
         max_depth: u8,
         filename: &str,
     ) -> Self {
@@ -51,7 +52,7 @@ impl<S: SubsetMaskStage> PruningTrie<S> {
         } else {
             println!("Missing pruning table {filename}; generating ...");
             let t = std::time::Instant::now();
-            let root = TrieNode::<S>::new(targets, twists, max_depth);
+            let root = TrieNode::<S>::new(targets, &twists.to_vec(), max_depth);
             let dur = t.elapsed();
             println!("Generated pruning table in {dur:.3?}. Serializing ...");
             let serialized = root.serialize();
@@ -341,12 +342,13 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::stages::Stage1;
+    use crate::{Stage, stages::Stage1};
 
     #[test]
     fn test_pruning_trie_ser_deser() {
         for depth in 1..=2 {
-            let pruning_trie = TrieNode::<Stage1>::new(&[Stage1::TARGET], &Twist::ALL, depth);
+            let pruning_trie =
+                TrieNode::<Stage1>::new(&[Stage1::TARGET], &Stage1::TWISTS.to_vec(), depth);
             let serialized = pruning_trie.serialize();
             let deserialized = TrieNode::deserialize(&serialized).unwrap();
             assert_eq!(deserialized, pruning_trie);
@@ -355,8 +357,8 @@ mod tests {
 
     #[test]
     fn test_pruning_trie_determinism() {
-        let trie1 = TrieNode::<Stage1>::new(&[Stage1::TARGET], &Twist::ALL, 2);
-        let trie2 = TrieNode::<Stage1>::new(&[Stage1::TARGET], &Twist::ALL, 2);
+        let trie1 = TrieNode::<Stage1>::new(&[Stage1::TARGET], &Stage1::TWISTS.to_vec(), 2);
+        let trie2 = TrieNode::<Stage1>::new(&[Stage1::TARGET], &Stage1::TWISTS.to_vec(), 2);
         assert_eq!(trie1, trie2);
     }
 }

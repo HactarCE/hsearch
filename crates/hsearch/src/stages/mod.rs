@@ -1,19 +1,17 @@
-use crate::XyRot;
 use crate::prelude::*;
 
 mod s1_mid;
 mod s2_left;
 mod s3_count;
-mod s4_psio;
-mod v2_s1_sio;
 
 pub use s1_mid::Stage1;
 pub use s2_left::Stage2;
 pub use s3_count::Stage3;
-pub use s4_psio::Stage4;
-pub use v2_s1_sio::V2Stage1;
 
 pub trait Stage: 'static + Send + Sync + std::fmt::Debug + Copy + Default + Eq {
+    /// Twist set that the stage is capable of representing.
+    const TWISTS: TwistSet;
+
     /// Applies a twist and returns the new state.
     #[must_use]
     fn do_twist(self, twist: Twist) -> Self;
@@ -22,11 +20,6 @@ pub trait Stage: 'static + Send + Sync + std::fmt::Debug + Copy + Default + Eq {
     #[must_use]
     fn do_twists(self, twists: impl IntoIterator<Item = Twist>) -> Self {
         twists.into_iter().fold(self, Self::do_twist)
-    }
-
-    /// Implicit rotation to apply to the puzzle after a twist.
-    fn implicit_rotation_after_twist(_twist: Twist) -> XyRot {
-        XyRot::IDENT
     }
 
     /// Returns a state with a given scramble.
@@ -66,15 +59,12 @@ mod tests {
     use rand::seq::IndexedRandom;
 
     use super::*;
-    use crate::parse_twists;
 
     #[test]
     fn test_all_stage_defaults() {
         test_stage_default::<Stage1>();
         test_stage_default::<Stage2>();
         test_stage_default::<Stage3>();
-        test_stage_default::<Stage4>();
-        test_stage_default::<V2Stage1>();
     }
 
     fn test_stage_default<S: Stage>() {
@@ -84,13 +74,13 @@ mod tests {
 
     #[test]
     fn test_all_stage_setups() {
-        test_stage_setup::<Stage1>(&Twist::ALL);
-        test_stage_setup::<Stage2>(&Stage2::TWISTS);
-        test_stage_setup::<Stage3>(&Stage3::TWISTS);
-        test_stage_setup::<V2Stage1>(&Twist::ALL);
+        test_stage_setup::<Stage1>();
+        test_stage_setup::<Stage2>();
+        test_stage_setup::<Stage3>();
     }
 
-    fn test_stage_setup<S: Stage>(allowed_twists: &[Twist]) {
+    fn test_stage_setup<S: Stage>() {
+        let allowed_twists = S::TWISTS.to_vec();
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
         let twists1 = allowed_twists
             .choose_iter(&mut rng)
@@ -109,18 +99,5 @@ mod tests {
             S::with_setup(&twists1).do_twists(twists2),
             S::with_setup(&both),
         );
-    }
-
-    #[test]
-    fn test_stage4_setup_and_move_transformations() {
-        // stage4 requires a separate test because of the implicit rotations
-        let twists1 = parse_twists("IB ULB BLD FI RDB IB RUB OLDB BLD OF ID LDB"); // preserves stage5 invariants
-        let twists2 = parse_twists("FO OR FO OUF IF2 FO OUFR FD OB FU OR OF2"); // assumes implicit rotations after each twist
-        let twists3 = parse_twists("FO OR FO OFD IF2 FO OFLD FR OB FU OR OB2"); // same as above, but from global perspective
-
-        assert_eq!(
-            Stage4::with_setup(&twists1).do_twists(twists2),
-            Stage4::with_setup(&std::iter::chain(twists1, twists3).collect_vec()),
-        )
     }
 }
