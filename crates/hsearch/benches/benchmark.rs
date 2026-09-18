@@ -4,12 +4,11 @@ use std::hint::black_box;
 
 use criterion::measurement::WallTime;
 use criterion::{BenchmarkGroup, BenchmarkId, Criterion, criterion_group, criterion_main};
-use hsearch::SCRAMBLE_LEN;
 use hsearch::prelude::*;
 use hsearch::stages::*;
 use itertools::Itertools;
 use rand::SeedableRng;
-use rand::seq::{IndexedRandom, IteratorRandom};
+use rand::seq::IndexedRandom;
 
 criterion_main!(benches);
 criterion_group!(benches, criterion_benchmark);
@@ -51,9 +50,10 @@ fn bench_pruning_trie(c: &mut Criterion) {
         prune_depth: u8,
         remaining_search_depth: u8,
         name: &str,
+        filename: &str,
     ) {
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
-        let pruning_trie = PruningTrie::load_or_generate(targets, S::TWISTS, prune_depth, "s1_mid");
+        let pruning_trie = PruningTrie::load_or_generate(targets, S::TWISTS, prune_depth, filename);
         for distance_to_solved in [4, 10] {
             let allowed_twists = S::TWISTS.to_vec();
             let input_states = (0..100)
@@ -79,10 +79,10 @@ fn bench_pruning_trie(c: &mut Criterion) {
         }
     }
 
-    let mut g = c.benchmark_group("stage1_pruning_trie_lookup");
+    let mut g = c.benchmark_group("pruning_trie_lookup");
 
-    // bench_stage_pruning_trie_lookup(&mut g, &[Stage1::TARGET], 3, "Stage1");
-    // bench_stage_pruning_trie_lookup(&mut g, &[Stage1::TARGET], 4, "Stage1");
-    bench_stage_pruning_trie_lookup(&mut g, &[Stage2::TARGET], 3, 2, "Stage2");
-    bench_stage_pruning_trie_lookup(&mut g, &[Stage2::TARGET], 4, 3, "Stage2");
+    // bench_stage_pruning_trie_lookup(&mut g, &[Stage1::TARGET], 3, "Stage1", "s1_mid");
+    // bench_stage_pruning_trie_lookup(&mut g, &[Stage1::TARGET], 4, "Stage1", "s1_mid");
+    bench_stage_pruning_trie_lookup(&mut g, &[Stage2::TARGET], 3, 2, "Stage2", "s2_left");
+    bench_stage_pruning_trie_lookup(&mut g, &[Stage2::TARGET], 4, 3, "Stage2", "s2_left");
 }
