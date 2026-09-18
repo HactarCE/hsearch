@@ -38,7 +38,7 @@ pub struct Stage4 {
     ///
     /// Each pair of ridges is kept sorted by bit pattern to canonicalize the
     /// overall bit pattern.
-    r: [RidgePos; 4], // u24
+    r: [RidgePos; 4], // [u8; 4]
 
     /// For each edge location, 2 bits indicating one of the following cases:
     ///
@@ -78,13 +78,14 @@ impl Stage4 {
     }
 }
 
-impl StageKeyU64 for Stage4 {
-    fn key(self) -> u64 {
-        todo!()
-        // self.bits
+impl StageKeyU128 for Stage4 {
+    fn init() -> Vec<Self> {
+        Self::target()
     }
-    // const PRUNING_MAP_TWISTS: &[Twist] = &Self::TWISTS;
-    const PRUNING_MAP_TWISTS: &[Twist] = &[];
+    fn key(self) -> u128 {
+        unsafe { std::mem::transmute::<Self, u128>(self) }
+    }
+    const PRUNING_MAP_TWISTS: TwistSet = Self::TWISTS;
 }
 
 impl Stage for Stage4 {
@@ -138,19 +139,6 @@ impl Stage for Stage4 {
         ) as u32;
 
         Self { r, e, c }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct PackedTwistData(u32); // u3 + u24
-impl PackedTwistData {
-    pub fn facet(self) -> Facet {
-        unsafe { std::hint::assert_unchecked(self.0 & 0x7FFF == self.0) };
-        Facet::from_u8((self.0 >> 24) as u8)
-    }
-
-    pub fn rot_facet(self, f: Facet) -> Facet {
-        Facet::from_u8(((self.0 >> f as u8) & 0x7) as u8)
     }
 }
 

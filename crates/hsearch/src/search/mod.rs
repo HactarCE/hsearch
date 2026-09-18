@@ -25,6 +25,7 @@ impl fmt::Display for NoSolution {
 pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     let s1_prune = &*PRUNING_TABLES.s1_mid;
     let s2_prune = &*PRUNING_TABLES.s2_left;
+    let s4_prune = &*PRUNING_TABLES.s4_predom;
 
     let untransformed_partial = Partial::new(scramble);
 
@@ -33,13 +34,12 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
         Axis::ALL.map(|src| Mat4::rot(src, X)),
         // replace I facet with any other facet around try leaving a different facet unsolved instead of F
         [U, D, F, B, O, I].map(|f| f.mat4_to(I)),
-        // TODO: do "alternative I facet" as postprocessing, with multiple targets
     )
     .map(|(alternative_p_sep, alternative_f_facet)| alternative_f_facet * alternative_p_sep)
     .map(|m| untransformed_partial.transform_by(m))
     .collect_vec();
 
-    println!("Stage 1");
+    println!("Stage 1: Mid");
     Iddfs::new::<Stage1>(
         Stage1::TWISTS,
         |s| s.is_target_solved(),
@@ -48,15 +48,15 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     )
     .iddfs_extend(&mut partials)?;
 
-    // Optionally swap R/L (TODO: do this as postprocessing, with multiple targets)
+    // Optionally swap R/L
     partials = partials
         .into_par_iter()
-        .flat_map(|partial| [partial.transform_by(Mat4::rot180(X, Y)), partial])
+        .flat_map(|partial| [partial.transform_by(Mat4::refl(X)), partial])
         .collect();
 
     cleanup_and_display_solutions("stage 1", &mut partials, true);
 
-    println!("Stage 2");
+    println!("Stage 2: Left");
     Iddfs::new::<Stage2>(
         Stage2::TWISTS,
         |s| s.is_target_solved(),
@@ -66,7 +66,7 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     .iddfs_extend(&mut partials)?;
     cleanup_and_display_solutions("stage 2", &mut partials, true);
 
-    println!("Stage 3");
+    println!("Stage 3: Counts");
     Iddfs::new::<Stage3>(
         Stage3::TWISTS,
         |s| s.is_target_solved(),
@@ -76,13 +76,24 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     .iddfs_extend(&mut partials)?;
     cleanup_and_display_solutions("stage 3", &mut partials, true);
 
-    println!("Stage 4");
+    println!("Stage 4: Pre-domino");
     let target = Stage4::target();
     Iddfs::new::<Stage4>(
         Stage3::TWISTS,
         |s| s.is_target_solved(&target),
-        |_, _| false,
-        1..=6,
+        |s, d| s4_prune.query_should_prune(s.key(), d),
+        1..=7,
+    )
+    .iddfs_extend(&mut partials)?;
+    cleanup_and_display_solutions("stage 4", &mut partials, true);
+
+    println!("Stage 4: Pre-domino");
+    let target = Stage4::target();
+    Iddfs::new::<Stage4>(
+        Stage3::TWISTS,
+        |s| s.is_target_solved(&target),
+        |s, d| s4_prune.query_should_prune(s.key(), d),
+        1..=7,
     )
     .iddfs_extend(&mut partials)?;
     cleanup_and_display_solutions("stage 4", &mut partials, true);

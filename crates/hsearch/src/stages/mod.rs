@@ -48,9 +48,10 @@ pub trait Stage: 'static + Send + Sync + std::fmt::Debug + Copy + Default + Eq {
     fn from_state(state: SimplePuzzleSim) -> Self;
 }
 
-pub trait StageKeyU64: Stage {
-    fn key(self) -> u64;
-    const PRUNING_MAP_TWISTS: &[Twist];
+pub trait StageKeyU128: Stage {
+    fn init() -> Vec<Self>;
+    fn key(self) -> u128;
+    const PRUNING_MAP_TWISTS: TwistSet;
 }
 
 #[cfg(test)]
