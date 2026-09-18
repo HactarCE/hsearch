@@ -203,10 +203,11 @@ fn stage3() -> String {
 fn stage4() -> String {
     use hsearch_core::stage_utils::rl_eo;
 
-    let solved_r: &str = "[RidgePos(0); 4]"; // solved state is not representible
+    let solved_r: &str = "0";
     let solved_e: u64 = collect_bits(edges().flat_map(|v| [v[X] != 0; 2]));
     let solved_c: u32 = collect_bits(corners().flat_map(|_| [false; 2]));
 
+    let r = PermutationLut::new(PieceType::Ridge.all_stickers()).to_rust_code(64, 0, 1, "r");
     let eo = OrientationLut::new(edges(), 4, rl_eo).to_rust_code(64, 0, 2, "e");
     let ep = PermutationLut::new(edges()).to_rust_code(64, 0, 2, "e");
     let co = OrientationLut::new(corners(), 4, |r, _v, o| {
@@ -226,7 +227,7 @@ fn stage4() -> String {
 
             fn generated_do_twist(self, twist: Twist) -> Self {{
                 let Self {{ r, e, c }} = self;
-                let r = update_ridges(r, twist);
+                let r = {r};
                 let e = {eo};
                 let e = {ep};
                 let c = {co};

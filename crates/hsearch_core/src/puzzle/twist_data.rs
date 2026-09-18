@@ -40,17 +40,17 @@ impl TwistData {
     }
 
     /// Returns the facet that is twisted.
-    pub fn facet(self) -> Facet {
+    pub const fn facet(self) -> Facet {
         Facet::from_u8((self.0 >> Self::FACET_OFFSET) as u8)
     }
 
     /// Returns the axis of the facet that is twisted.
-    pub fn axis(self) -> Axis {
+    pub const fn axis(self) -> Axis {
         self.facet().axis()
     }
 
     /// Returns the rotation applied to affected pieces.
-    pub fn rot(self) -> Mat4 {
+    pub const fn rot(self) -> Mat4 {
         Mat4(self.0 & Self::MATRIX_MASK)
     }
 

@@ -1,5 +1,3 @@
-use std::fmt;
-
 use itertools::Itertools;
 
 use super::*;
@@ -26,19 +24,17 @@ include!(concat!("../generated/stage4.rs"));
 /// This target has 12 possible orientations.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Stage4 {
-    /// For each of the two `R`/`L` ridge pieces in `M`:
+    /// For each ridge *sticker* location, 1 bit indicating one of the following
+    /// cases:
     ///
-    /// - 3 bits indicating the facet containing the `R`/`L` sticker
-    /// - 3 bits indicating the facet containing the non-`R`/`L` sticker
+    /// - `0` = sticker is correct for domino reduction
+    /// - `1` = sticker is incorrect for domino reduction
     ///
-    /// For each of the two `M` ridge pieces in `R`/`L`:
+    /// An `R`/`L` sticker is correct iff it is on `R`/`L`, and a non-`R`/`L`
+    /// sticker is correct iff it is _not_ on `R`/`L`.
     ///
-    /// - 3 bits indicating the `R`/`L` facet the ridge is on
-    /// - 3 bits indicating the non-`R`/`L` facet the ridge is on
-    ///
-    /// Each pair of ridges is kept sorted by bit pattern to canonicalize the
-    /// overall bit pattern.
-    r: [RidgePos; 4], // [u8; 4]
+    /// Typically, this has exact four `1` bits.
+    r: u64, // u48
 
     /// For each edge location, 2 bits indicating one of the following cases:
     ///
@@ -83,7 +79,18 @@ impl StageKeyU128 for Stage4 {
         Self::target()
     }
     fn key(self) -> u128 {
-        unsafe { std::mem::transmute::<Self, u128>(self) }
+        let r = if self.r == 0 {
+            0
+        } else {
+            u32::from_ne_bytes(
+                bit_iter::BitIter::from(self.r)
+                    .collect_array()
+                    .unwrap()
+                    .map(|i| i as u8),
+            )
+        };
+
+        self.e as u128 | ((self.c as u128) << 64) | ((r as u128) << (64 + 32))
     }
     const PRUNING_MAP_TWISTS: TwistSet = Self::TWISTS;
 }
@@ -96,33 +103,12 @@ impl Stage for Stage4 {
     }
 
     fn from_state(state: SimplePuzzleSim) -> Self {
-        let mut r = [RidgePos(0); 4];
-        let mut ridge_index = 0;
-        for pos in PieceType::Ridge.iter() {
-            let (init, att) = state.get_piece(pos);
-            let is_misoriented = if init[X] == 0 {
-                (att * init)[X] != 0 // M -> R/L
-            } else {
-                X.transform_by(att) != X // R/L -> anywhere else
-            };
-            if is_misoriented {
-                let [f1, f2] = init.facets().collect_array().unwrap();
-                assert!(ridge_index < 4, "too many unsolved ridges");
-                let mut ridge = RidgePos::new(f1, f2).transform_by(att);
-                if ridge.facet1().axis() == X {
-                    // canonicalize orientation of M ridge
-                    ridge = RidgePos::new(ridge.facet2(), ridge.facet1());
-                }
-                r[ridge_index] = ridge;
-                ridge_index += 1;
-            }
-        }
-        assert_eq!(4, ridge_index, "not enough unsolved ridges");
-        r.sort(); // put M ridges first
-        assert_eq!(X, r[0].facet2().axis(), "expected 2 M ridges on R/L");
-        assert_eq!(X, r[1].facet2().axis(), "expected 2 M ridges on R/L");
-        assert!(r[2].is_in_m(), "expected 2 R/L ridges on M");
-        assert!(r[3].is_in_m(), "expected 2 R/L ridges on M");
+        let r: u64 = collect_bits(PieceType::Ridge.all_stickers().map(|sticker_vector| {
+            let is_sticker_on_x = sticker_vector[X].abs() == 2;
+            let is_sticker_from_x = state.is_sticker_from_axis(sticker_vector, X);
+            is_sticker_on_x != is_sticker_from_x
+        }));
+        assert_eq!(4, r.count_ones(), "incorrect number of unsolved ridges");
 
         let e = state.pieces_to_bits(
             2,
@@ -139,90 +125,5 @@ impl Stage for Stage4 {
         ) as u32;
 
         Self { r, e, c }
-    }
-}
-
-#[inline(never)]
-#[unsafe(no_mangle)]
-pub(crate) fn update_ridges(ridges: [RidgePos; 4], twist: Twist) -> [RidgePos; 4] {
-    sort_ridge_pairs(ridges.map(|ridge| ridge.do_twist(twist)))
-}
-
-#[must_use]
-fn sort_ridge_pairs(mut ridges: [RidgePos; 4]) -> [RidgePos; 4] {
-    ridges[0..2].sort();
-    ridges[2..4].sort();
-    ridges
-}
-
-/// Returns a 6-bit integer representing a ridge position + orientation
-/// (equivalently: a ridge sticker).
-fn ridge_bits(init: Vec4, att: Mat4) -> RidgePos {
-    let [f1, f2] = (att * init).facets().collect_array().unwrap();
-    RidgePos::new(f1, f2)
-}
-
-/// Position + orientation of a ridge, represented as an ordered pair of facets.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct RidgePos(u8);
-
-impl fmt::Debug for RidgePos {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("RidgePos")
-            .field(&self.facet1())
-            .field(&self.facet2())
-            .finish()
-    }
-}
-
-impl RidgePos {
-    fn new(facet1: Facet, facet2: Facet) -> Self {
-        Self(facet1 as u8 | ((facet2 as u8) << 3))
-    }
-
-    fn facet1(self) -> Facet {
-        Facet::from_u8(self.0 & 0x7)
-    }
-
-    fn facet2(self) -> Facet {
-        Facet::from_u8(self.0 >> 3)
-    }
-
-    fn is_in_m(self) -> bool {
-        self.facet1().axis() != X && self.facet2().axis() != X
-    }
-
-    #[must_use]
-    fn do_twist(self, twist: Twist) -> Self {
-        debug_assert_eq!(0, self.0 & !0o77);
-        if self.facet1() == twist.facet() {
-            Self::new(self.facet1(), twist.rot() * self.facet2())
-        } else if self.facet2() == twist.facet() {
-            Self::new(twist.rot() * self.facet1(), self.facet2())
-        } else {
-            self
-        }
-    }
-}
-
-impl TransformByMat4 for RidgePos {
-    fn transform_by(&self, m: Mat4) -> Self {
-        Self::new(m * self.facet1(), m * self.facet2())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_stage4_ridge_pos() {
-        for f1 in Facet::ALL {
-            for f2 in Facet::ALL {
-                let r = RidgePos::new(f1, f2);
-                assert_eq!(f1, r.facet1());
-                assert_eq!(f2, r.facet2());
-            }
-        }
     }
 }

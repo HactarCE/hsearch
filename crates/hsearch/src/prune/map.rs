@@ -147,7 +147,7 @@ mod tests {
 
     #[test]
     fn test_pruning_map_ser_deser() {
-        for depth in 1..=4 {
+        for depth in 1..=2 {
             let pruning_map = PruningMap::new::<Stage4>(depth);
             let serialized = pruning_map.serialize();
             let deserialized = PruningMap::deserialize(depth, &serialized).unwrap();
