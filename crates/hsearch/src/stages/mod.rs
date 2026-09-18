@@ -3,10 +3,12 @@ use crate::prelude::*;
 mod s1_mid;
 mod s2_left;
 mod s3_count;
+mod s4_predom;
 
 pub use s1_mid::Stage1;
 pub use s2_left::Stage2;
 pub use s3_count::Stage3;
+pub use s4_predom::Stage4;
 
 pub trait Stage: 'static + Send + Sync + std::fmt::Debug + Copy + Default + Eq {
     /// Twist set that the stage is capable of representing.
@@ -74,25 +76,27 @@ mod tests {
 
     #[test]
     fn test_all_stage_setups() {
-        test_stage_setup::<Stage1>();
-        test_stage_setup::<Stage2>();
-        test_stage_setup::<Stage3>();
+        test_stage_setup::<Stage1>(&[]);
+        test_stage_setup::<Stage2>(&[]);
+        test_stage_setup::<Stage3>(&[]);
+        for setup in ["UF", "DF", "FU", "FO", "OU"] {
+            test_stage_setup::<Stage4>(&parse_twists(setup));
+        }
     }
 
-    fn test_stage_setup<S: Stage>() {
+    fn test_stage_setup<S: Stage>(shared_setup: &[Twist]) {
+        S::with_setup(shared_setup); // don't panic
+
         let allowed_twists = S::TWISTS.to_vec();
         let mut rng = rand::rngs::StdRng::seed_from_u64(0);
-        let twists1 = allowed_twists
-            .choose_iter(&mut rng)
-            .unwrap()
+        let twists1 = shared_setup
+            .iter()
+            .chain(allowed_twists.choose_iter(&mut rng).unwrap().take(100))
             .copied()
-            .take(100)
             .collect_vec();
-        let twists2 = allowed_twists
-            .choose_iter(&mut rng)
-            .unwrap()
+        println!("{}", twists_to_string(&twists1));
+        let twists2 = (allowed_twists.choose_iter(&mut rng).unwrap().take(100))
             .copied()
-            .take(100)
             .collect_vec();
         let both = std::iter::chain(&twists1, &twists2).copied().collect_vec();
         assert_eq!(

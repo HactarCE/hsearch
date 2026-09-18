@@ -142,6 +142,15 @@ impl Vec4 {
         Axis::ALL.into_iter().filter(move |&ax| self[ax] != 0)
     }
 
+    /// Returns the facets that a vector is on.
+    ///
+    /// This is similar to [`Self::nonzero_axes()`], except that each axis is
+    /// accompanied by a sign.
+    pub fn facets(self) -> impl Iterator<Item = Facet> {
+        self.nonzero_axes()
+            .map(move |ax| Facet::new(ax, Sign::from_i8(self[ax])))
+    }
+
     /// Returns the first axis from `order` that is nonzero in the vector, or
     /// `None` if they are all zero.
     pub fn unwrap_first_nonzero_axis(self, order: [Axis; 4]) -> Axis {

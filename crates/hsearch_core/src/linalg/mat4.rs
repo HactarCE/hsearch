@@ -11,12 +11,21 @@ pub const IDENT: Mat4 = Mat4::from_cols([R, U, F, O]);
 /// For each column:
 /// - 1 bit indicating the sign of its nonzero entry.
 /// - 2 bits indicating the position of its nonzero entry.
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Mat4(pub(crate) u16);
+
+impl fmt::Debug for Mat4 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Mat4(")?;
+        Axis::ALL.map(|axis| self.col(axis)).fmt(f)?;
+        write!(f, ")")?;
+        Ok(())
+    }
+}
 
 impl fmt::Display for Mat4 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", Axis::ALL.map(|axis| self.col(axis)))
+        write!(f, "{self:?}")
     }
 }
 

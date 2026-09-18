@@ -76,6 +76,17 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     .iddfs_extend(&mut partials)?;
     cleanup_and_display_solutions("stage 3", &mut partials, true);
 
+    println!("Stage 4");
+    let target = Stage4::target();
+    Iddfs::new::<Stage4>(
+        Stage3::TWISTS,
+        |s| s.is_target_solved(&target),
+        |_, _| false,
+        1..=6,
+    )
+    .iddfs_extend(&mut partials)?;
+    cleanup_and_display_solutions("stage 4", &mut partials, true);
+
     // println!("Stage 2.2");
     // Iddfs::new::<Stage2>(
     //     &Stage2::TWISTS,

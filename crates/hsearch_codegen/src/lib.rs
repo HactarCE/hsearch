@@ -15,11 +15,12 @@ pub fn generate_all(out_dir: &Path) -> std::io::Result<()> {
     std::fs::write(out_dir.join("stage1.rs"), stage1())?;
     std::fs::write(out_dir.join("stage2.rs"), stage2())?;
     std::fs::write(out_dir.join("stage3.rs"), stage3())?;
+    std::fs::write(out_dir.join("stage4.rs"), stage4())?;
     Ok(())
 }
 
 fn stage1() -> String {
-    use hsearch_core::stage_utils::s1_ro;
+    use hsearch_core::stage_utils::xyz_ro;
 
     let solved_e: u32 = collect_bits(edges().map(|v| v[X] == 0));
     let solved_r: u64 = collect_bits(ridges().flat_map(|v| [true, v[X] == 0]));
@@ -29,7 +30,7 @@ fn stage1() -> String {
     let target_r: u64 = collect_bits(ridges().map(is_in_target).flat_map(|b| [true, b]));
 
     let e = PermutationLut::new(edges()).to_rust_code(32, 0, 1, "e");
-    let ro = OrientationLut::new(ridges(), 4, s1_ro).to_rust_code(64, 0, 2, "r");
+    let ro = OrientationLut::new(ridges(), 4, xyz_ro).to_rust_code(64, 0, 2, "r");
     let rp = PermutationLut::new(ridges()).to_rust_code(64, 0, 2, "r");
 
     let twist_set = TwistSet::ALL;
@@ -118,7 +119,7 @@ fn stage2() -> String {
             pub const SOLVED: Self = Self {{ re: 0x{solved_re:025x}, c: 0x{solved_c:016x} }};
             pub const TARGET: Self = Self {{ re: 0x{target_re:025x}, c: 0x{target_c:016x} }};
 
-            const GENERATED_TWISTS: TwistSet = {twist_set:#02x?};
+            const GENERATED_TWISTS: TwistSet = {twist_set:?};
 
             fn generated_do_twist(self, twist: Twist) -> Self {{
                 let Self {{ re, c }} = self;
@@ -132,7 +133,7 @@ fn stage2() -> String {
 }
 
 fn stage3() -> String {
-    use hsearch_core::stage_utils::s3_eo;
+    use hsearch_core::stage_utils::rl_eo;
 
     let is_in_stage3 = |v: &Vec4| v[X] == 1 || v[W] == -1;
 
@@ -158,9 +159,9 @@ fn stage3() -> String {
     let r = PermutationLut::new(s3_ridges()).to_rust_code(16, 0, 1, "r");
     let eco = OrientationLut::new(s3_edges().chain(s3_corners()), 4, |r, v, o| {
         if v.taxicab_norm() == 3 {
-            s3_eo(r, v, o) // edge
+            rl_eo(r, v, o) // edge
         } else {
-            hsearch_core::Axis::from_u8(o).transform_by(r) as u8 // corner
+            Axis::from_u8(o).transform_by(r) as u8 // corner
         }
     })
     .to_rust_code(64, 0, 2, "ec");
@@ -185,7 +186,7 @@ fn stage3() -> String {
             /// Corners (low bits only). All corners are in `R`/`L`
             const C_RL: u64 = 0x{c_rl:06x} << 40;
 
-            const GENERATED_TWISTS: TwistSet = {twist_set:#02x?};
+            const GENERATED_TWISTS: TwistSet = {twist_set:?};
 
             fn generated_do_twist(self, twist: Twist) -> Self {{
                 let Self {{ r, ec }} = self;
@@ -199,36 +200,40 @@ fn stage3() -> String {
     ))
 }
 
-fn stage4_corners() -> impl Iterator<Item = Vec4> {
-    corners().filter(|&v| v[Z] == 1 || (v[W] == 1 && v[Y] == 1))
-}
-fn stage4_edges() -> impl Iterator<Item = Vec4> {
-    edges().filter(|&v| v[Z] == 1 || (v[W] == 1 && v[Y] == 1))
-}
-fn stage4_ridges() -> impl Iterator<Item = Vec4> {
-    ridges().filter(|&v| v[Z] == 1 || (v[W] == 1 && v[Y] == 1))
-}
+fn stage4() -> String {
+    use hsearch_core::stage_utils::rl_eo;
 
-fn stage4_rotation(t: Twist) -> Result<Option<Mat4>, ()> {
-    match t.facet() {
-        F => Ok(None),
-        I if F.transform_by(t.rot()) == F => Ok(None),
-        O => {
-            let new_f = F.transform_by(t.rot());
-            let new_u = U.transform_by(t.rot());
-            if new_f == F {
-                Ok(Some(t.rot().inv()))
-            } else if new_u == F {
-                match new_f {
-                    U => Ok(None),
-                    R | L => Ok(Some(new_f.mat4_to(U))),
-                    D => Ok(Some(Mat4::rot(X, Y).pow(2))),
-                    _ => Err(()),
-                }
-            } else {
-                Err(())
-            }
-        }
-        _ => Err(()),
-    }
+    let solved_r: &str = "[RidgePos(0); 4]"; // solved state is not representible
+    let solved_e: u64 = collect_bits(edges().flat_map(|v| [v[X] != 0; 2]));
+    let solved_c: u32 = collect_bits(corners().flat_map(|_| [false; 2]));
+
+    let eo = OrientationLut::new(edges(), 4, rl_eo).to_rust_code(64, 0, 2, "e");
+    let ep = PermutationLut::new(edges()).to_rust_code(64, 0, 2, "e");
+    let co = OrientationLut::new(corners(), 4, |r, _v, o| {
+        Axis::from_u8(o).transform_by(r) as u8
+    })
+    .to_rust_code(32, 0, 2, "c");
+    let cp = PermutationLut::new(corners()).to_rust_code(32, 0, 2, "c");
+
+    let twist_set = TwistSet::new(|t| X.transform_by(t.rot()) == X);
+
+    dedent(&format!(
+        "
+        impl Stage4 {{
+            pub const SOLVED: Self = Self {{ r: {solved_r}, e: 0x{solved_e:016x}, c: 0x{solved_c:08x} }};
+
+            const GENERATED_TWISTS: TwistSet = {twist_set:?};
+
+            fn generated_do_twist(self, twist: Twist) -> Self {{
+                let Self {{ r, e, c }} = self;
+                let r = update_ridges(r, twist);
+                let e = {eo};
+                let e = {ep};
+                let c = {co};
+                let c = {cp};
+                Self {{ r, e, c }}
+            }}
+        }}
+        "
+    ))
 }

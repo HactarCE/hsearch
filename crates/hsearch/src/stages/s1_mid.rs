@@ -80,7 +80,7 @@ impl Stage for Stage1 {
                 |_| true,
                 |init, att| {
                     let init_orientation = if init[X] == 0 { 0b11 } else { 0b01 };
-                    hsearch_core::stage_utils::s1_ro(att, init, init_orientation) as u64
+                    hsearch_core::stage_utils::xyz_ro(att, init, init_orientation) as u64
                 },
             ),
         }

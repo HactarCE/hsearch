@@ -106,8 +106,7 @@ impl Stage for Stage3 {
                 is_in_stage3,
                 |init, att| {
                     if init.taxicab_norm() == 3 {
-                        let o = if init[X] == 0 { 0 } else { 3 };
-                        hsearch_core::stage_utils::s3_eo(att, init, o) as u64 //edge
+                        hsearch_core::stage_utils::rl_init_eo(init, att) // edge
                     } else {
                         X.transform_by(att) as u64 // corner
                     }

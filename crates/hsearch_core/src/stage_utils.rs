@@ -1,11 +1,13 @@
 use crate::*;
 
-/// Returns the new orientation for a ridge in stage 1.
+/// Returns an updated ridge orientation relative to the first axis on which it
+/// has nonzero coordinate. I.e., X axis if it is on `R`/`L`, otherwise Y axis
+/// if it is on `U`/`D`, otherwise `Z` axis.
 ///
 /// - `r` = Rotation matrix to apply
 /// - `v` = Old position
 /// - `o` = Old orientation bits (just lowest 2 bits)
-pub fn s1_ro(r: Mat4, v: Vec4, o: u8) -> u8 {
+pub fn xyz_ro(r: Mat4, v: Vec4, o: u8) -> u8 {
     /// Canonical axis order for determining ridge orientation.
     const AXIS_ORDER: [Axis; 4] = [X, Y, Z, W];
 
@@ -24,12 +26,18 @@ pub fn s1_ro(r: Mat4, v: Vec4, o: u8) -> u8 {
     }
 }
 
-/// Returns the new orientation for an edge in stage 3.
+/// Returns an initial edge orientation relative to the X axis.
+pub fn rl_init_eo(init: Vec4, att: Mat4) -> u64 {
+    let o = if init[X] == 0 { 0 } else { 3 };
+    rl_eo(att, init, o) as u64
+}
+
+/// Returns an updated edge orientation relative to the X axis.
 ///
 /// - `r` = Rotation matrix to apply
 /// - `v` = Old position
 /// - `o` = Old orientation bits (just lowest 2 bits)
-pub fn s3_eo(r: Mat4, v: Vec4, o: u8) -> u8 {
+pub fn rl_eo(r: Mat4, v: Vec4, o: u8) -> u8 {
     match o {
         0 => o,
         _ => {
