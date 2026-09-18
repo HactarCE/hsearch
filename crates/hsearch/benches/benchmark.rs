@@ -2,7 +2,8 @@
 
 use std::hint::black_box;
 
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use criterion::measurement::WallTime;
+use criterion::{BenchmarkGroup, BenchmarkId, Criterion, criterion_group, criterion_main};
 use hsearch::SCRAMBLE_LEN;
 use hsearch::prelude::*;
 use hsearch::stages::*;
@@ -19,57 +20,27 @@ fn criterion_benchmark(c: &mut Criterion) {
 }
 
 fn bench_do_twist(c: &mut Criterion) {
-    let mut g = c.benchmark_group("stage1_do_twist");
-    let twist_sequence = {
-        let mut twist_rng = rand::rngs::StdRng::seed_from_u64(1);
-        (0..500)
-            .map(|_| Twist::iter().choose(&mut twist_rng).unwrap())
-            .collect_vec()
-    };
-    g.bench_function("Stage1", |b| {
-        b.iter(|| {
-            let state = black_box(Stage1::default());
-            black_box(twist_sequence.iter().copied().fold(state, Stage1::do_twist))
-        });
-    });
-    g.bench_function("V2Stage1", |b| {
-        b.iter(|| {
-            let state = black_box(V2Stage1::default());
-            black_box(
-                twist_sequence
-                    .iter()
-                    .copied()
-                    .fold(state, V2Stage1::do_twist),
-            )
-        });
-    });
-    g.finish();
+    fn bench_stage_do_twist<S: Stage>(g: &mut BenchmarkGroup<'_, WallTime>, name: &str) {
+        let allowed_twists = S::TWISTS.to_vec();
+        let twist_sequence = {
+            let mut twist_rng = rand::rngs::StdRng::seed_from_u64(1);
+            (0..500)
+                .map(|_| *allowed_twists.choose(&mut twist_rng).unwrap())
+                .collect_vec()
+        };
 
-    let mut g = c.benchmark_group("stage2_do_twist");
-    let twist_sequence = {
-        let mut twist_rng = rand::rngs::StdRng::seed_from_u64(1);
-        (0..500)
-            .map(|_| {
-                Stage2::TWISTS
-                    .iter()
-                    .copied()
-                    .choose(&mut twist_rng)
-                    .unwrap()
-            })
-            .collect_vec()
-    };
-    g.bench_function("Stage1", |b| {
-        b.iter(|| {
-            let state = black_box(Stage1::default());
-            black_box(twist_sequence.iter().copied().fold(state, Stage1::do_twist))
+        g.bench_function(name, |b| {
+            b.iter(|| {
+                let state = black_box(S::default());
+                black_box(twist_sequence.iter().copied().fold(state, S::do_twist))
+            });
         });
-    });
-    g.bench_function("Stage2", |b| {
-        b.iter(|| {
-            let state = black_box(Stage2::default());
-            black_box(twist_sequence.iter().copied().fold(state, Stage2::do_twist))
-        });
-    });
+    }
+
+    let mut g = c.benchmark_group("do_twist");
+    bench_stage_do_twist::<Stage1>(&mut g, "Stage1");
+    bench_stage_do_twist::<Stage2>(&mut g, "Stage2");
+    bench_stage_do_twist::<Stage3>(&mut g, "Stage3");
     g.finish();
 }
 
@@ -93,7 +64,7 @@ fn bench_pruning_trie(c: &mut Criterion) {
     for prune_depth in [4] {
         let pruning_trie = PruningTrie::<Stage1>::load_or_generate(
             &[Stage1::TARGET],
-            &Twist::ALL,
+            TwistSet::ALL,
             prune_depth,
             "s1_ppsro",
         );
