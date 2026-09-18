@@ -45,49 +45,44 @@ fn bench_do_twist(c: &mut Criterion) {
 }
 
 fn bench_pruning_trie(c: &mut Criterion) {
-    let mut g = c.benchmark_group("stage1_pruning_trie_lookup");
-
-    let mut rng = rand::rngs::StdRng::seed_from_u64(0);
-
-    let init_state = Stage1::with_setup(
-        &Twist::iter()
-            .filter(|t| [I, O, F].contains(&t.facet()))
-            .collect_vec()
-            .choose_iter(&mut rng)
-            .unwrap()
-            .take(SCRAMBLE_LEN)
-            .copied()
-            .collect_vec(),
-    );
-    assert!(init_state.is_target_solved());
-
-    for prune_depth in [4] {
-        let pruning_trie = PruningTrie::<Stage1>::load_or_generate(
-            &[Stage1::TARGET],
-            TwistSet::ALL,
-            prune_depth,
-            "s1_ppsro",
-        );
+    fn bench_stage_pruning_trie_lookup<S: SubsetMaskStage>(
+        g: &mut BenchmarkGroup<'_, WallTime>,
+        targets: &[S],
+        prune_depth: u8,
+        remaining_search_depth: u8,
+        name: &str,
+    ) {
+        let mut rng = rand::rngs::StdRng::seed_from_u64(0);
+        let pruning_trie = PruningTrie::load_or_generate(targets, S::TWISTS, prune_depth, "s1_mid");
         for distance_to_solved in [4, 10] {
+            let allowed_twists = S::TWISTS.to_vec();
             let input_states = (0..100)
                 .map(|_| {
-                    std::iter::from_fn(|| Twist::iter().choose(&mut rng))
+                    allowed_twists
+                        .choose_iter(&mut rng)
+                        .unwrap()
+                        .copied()
                         .take(distance_to_solved)
-                        .fold(init_state, Stage::do_twist)
+                        .fold(S::default(), Stage::do_twist)
                 })
                 .collect_vec();
-            for remaining_search_depth in [1, 2, 3, 4] {
-                let mut input_states_iter = input_states.iter().copied().cycle();
-                let id = BenchmarkId::from_parameter(format!(
-                    "p={prune_depth},d={distance_to_solved},s={remaining_search_depth}"
-                ));
-                g.bench_function(id, |b| {
-                    b.iter(|| {
-                        let s = black_box(input_states_iter.next().unwrap());
-                        pruning_trie.query_should_prune(s.into(), remaining_search_depth)
-                    });
+            let mut input_states_iter = input_states.iter().copied().cycle();
+            let id = BenchmarkId::from_parameter(format!(
+                "{name} p={prune_depth},d={distance_to_solved},s={remaining_search_depth}"
+            ));
+            g.bench_function(id, |b| {
+                b.iter(|| {
+                    let s = black_box(input_states_iter.next().unwrap());
+                    pruning_trie.query_should_prune(s.into(), remaining_search_depth)
                 });
-            }
+            });
         }
     }
+
+    let mut g = c.benchmark_group("stage1_pruning_trie_lookup");
+
+    // bench_stage_pruning_trie_lookup(&mut g, &[Stage1::TARGET], 3, "Stage1");
+    // bench_stage_pruning_trie_lookup(&mut g, &[Stage1::TARGET], 4, "Stage1");
+    bench_stage_pruning_trie_lookup(&mut g, &[Stage2::TARGET], 3, 2, "Stage2");
+    bench_stage_pruning_trie_lookup(&mut g, &[Stage2::TARGET], 4, 3, "Stage2");
 }
