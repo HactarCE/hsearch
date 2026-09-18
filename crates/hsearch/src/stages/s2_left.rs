@@ -1,6 +1,3 @@
-use bnum::{cast::As, types::U256};
-use num_traits::{One, Zero};
-
 use super::*;
 
 include!(concat!("../generated/stage2.rs"));
@@ -96,11 +93,31 @@ impl SubsetMaskStage for Stage2 {
 }
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Stage2TrieKey(U256);
+pub struct Stage2TrieKey([u64; 3]);
 
 impl From<Stage2> for Stage2TrieKey {
     fn from(state: Stage2) -> Self {
-        Self((state.re.as_::<U256>() << 64) | state.c.as_::<U256>())
+        Self([state.c, state.re as u64, (state.re >> 64) as u64])
+    }
+}
+
+impl Stage2TrieKey {
+    fn shift_right(self, bit_count: u8) -> Self {
+        let bit_count = bit_count as usize;
+        if bit_count >= 192 {
+            return Self([0; 3]);
+        }
+
+        let word_shift = bit_count / 64;
+        let bit_shift = bit_count % 64;
+        let mut ret = [0; 3];
+        for i in 0..(3 - word_shift) {
+            ret[i] = self.0[i + word_shift] >> bit_shift;
+            if bit_shift > 0 && i + word_shift + 1 < 3 {
+                ret[i] |= self.0[i + word_shift + 1] << (64 - bit_shift);
+            }
+        }
+        Self(ret)
     }
 }
 
@@ -112,13 +129,12 @@ impl TrieKey for Stage2TrieKey {
         mut bit_count: u8,
         bitbuffer: &mut bitbuffer::BitWriteStream<'_, bitbuffer::LittleEndian>,
     ) -> bitbuffer::Result<()> {
-        let mut remaining = self.0;
+        let mut word_index = 0;
         while bit_count > 0 {
-            let chunk = remaining.as_::<usize>();
-            let chunk_size = bit_count.min(usize::BITS as u8);
-            bitbuffer.write_int(chunk, chunk_size as usize)?;
+            let chunk_size = bit_count.min(64);
+            bitbuffer.write_int(self.0[word_index], chunk_size as usize)?;
             bit_count -= chunk_size;
-            remaining >>= usize::BITS;
+            word_index += 1;
         }
         Ok(())
     }
@@ -127,36 +143,41 @@ impl TrieKey for Stage2TrieKey {
         mut bit_count: u8,
         bitbuffer: &mut bitbuffer::BitReadStream<'_, bitbuffer::LittleEndian>,
     ) -> bitbuffer::Result<Self> {
-        let mut ret = U256::zero();
+        let mut ret = [0; 3];
+        let mut word_index = 0;
         while bit_count > 0 {
-            let chunk_size = bit_count.min(usize::BITS as u8);
-            let chunk = bitbuffer.read_int::<usize>(chunk_size as usize)?;
-            ret <<= chunk_size;
-            ret |= chunk.as_::<U256>();
+            let chunk_size = bit_count.min(64);
+            ret[word_index] = bitbuffer.read_int::<u64>(chunk_size as usize)?;
             bit_count -= chunk_size;
+            word_index += 1;
         }
         Ok(Self(ret))
     }
 
     fn lsb(self) -> bool {
-        self.0.as_::<usize>() & 1 != 0
+        self.0[0] & 1 != 0
     }
 
     fn matches(self, entry_key: Self, _bit_count: u8) -> bool {
-        self.0 & entry_key.0 == entry_key.0
+        std::iter::zip(self.0, entry_key.0).all(|(query, entry)| query & entry == entry)
     }
 
     fn skip(self, bit_count: u8) -> Self {
-        Self(self.0 >> bit_count)
+        self.shift_right(bit_count)
     }
 
     fn truncate(self, bit_count: u8) -> Self {
-        Self(
-            self.0
-                & U256::one()
-                    .unbounded_shl(bit_count as u32)
-                    .wrapping_sub(U256::one()),
-        )
+        if bit_count >= Self::BITS {
+            return self;
+        }
+        let full_words = (bit_count / 64) as usize;
+        let remaining_bit_count = bit_count % 64;
+        let mut ret = [0; 3];
+        ret[..full_words].copy_from_slice(&self.0[..full_words]);
+        if remaining_bit_count > 0 {
+            ret[full_words] = self.0[full_words] & ((1u64 << remaining_bit_count) - 1);
+        }
+        Self(ret)
     }
 
     fn branches(self) -> [bool; 2] {
@@ -164,6 +185,38 @@ impl TrieKey for Stage2TrieKey {
     }
 
     fn common_lsb_prefix(self, other: Self) -> u8 {
-        (self.0 ^ other.0).trailing_zeros() as u8
+        for (word_index, (left, right)) in std::iter::zip(self.0, other.0).enumerate() {
+            let delta_mask = left ^ right;
+            if delta_mask != 0 {
+                return ((word_index * 64 + delta_mask.trailing_zeros() as usize) as u8)
+                    .min(Self::BITS);
+            }
+        }
+        Self::BITS
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_stage2_trie_key_bits_round_trip() {
+        let key = Stage2TrieKey([0x0123_4567_89ab_cdef, 0xfedc_ba98_7654_3210, (1 << 36) - 1]);
+
+        for bit_count in [0, 1, 63, 64, 65, 127, 128, 163, 164] {
+            let mut bytes = Vec::new();
+
+            let mut writer = bitbuffer::BitWriteStream::new(&mut bytes, bitbuffer::LittleEndian);
+            key.write_bits(bit_count, &mut writer).unwrap();
+
+            let mut reader = bitbuffer::BitReadStream::new(bitbuffer::BitReadBuffer::new(
+                &bytes,
+                bitbuffer::LittleEndian,
+            ));
+            let decoded = Stage2TrieKey::read_bits(bit_count, &mut reader).unwrap();
+
+            assert_eq!(decoded, key.truncate(bit_count));
+        }
     }
 }

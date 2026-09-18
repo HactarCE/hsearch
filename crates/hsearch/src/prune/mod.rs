@@ -17,7 +17,7 @@ pub struct PruningTables {
 
 pub static PRUNING_TABLES: PruningTables = PruningTables {
     s1_mid: LazyLock::new(|| {
-        PruningTrie::<Stage1>::load_or_generate(&[Stage1::TARGET], Stage1::TWISTS, 4, "s1_mid")
+        PruningTrie::<Stage1>::load_or_generate(&[Stage1::TARGET], Stage1::TWISTS, 3, "s1_mid")
     }),
     s2_left: LazyLock::new(|| {
         PruningTrie::<Stage2>::load_or_generate(&[Stage2::TARGET], Stage2::TWISTS, 4, "s2_left")
