@@ -13,11 +13,10 @@ workspace = true
 bit-iter.workspace = true
 bitbuffer.workspace = true
 bumpalo.workspace = true
+fxhash.workspace = true
 hsearch_core.workspace = true
 itertools.workspace = true
-num-traits.workspace = true
 rand.workspace = true
-rapidhash.workspace = true
 rayon.workspace = true
 
 [build-dependencies]

@@ -3,7 +3,6 @@ use std::io::{BufRead, Write};
 
 use bitbuffer::{BitReadBuffer, BitReadStream, BitWriteStream, LittleEndian};
 use itertools::Itertools;
-use rapidhash::HashMapExt;
 
 use crate::{HashMap, StageKeyU128};
 
@@ -74,7 +73,7 @@ impl PruningMap {
 
     pub fn new<S: StageKeyU128>(max_depth: u8) -> Self {
         let mut queue = VecDeque::new();
-        let mut map = HashMap::new();
+        let mut map = HashMap::default();
         for state in S::init() {
             map.insert(state.key(), 0);
             queue.push_back((state, 0));
@@ -128,7 +127,7 @@ fn ser_to_buf(
 fn deser_from_buf(
     buf: &mut BitReadStream<'_, LittleEndian>,
 ) -> bitbuffer::Result<HashMap<u128, u8>> {
-    let mut ret = HashMap::new();
+    let mut ret = HashMap::default();
     let entry_count = buf.read_int::<u128>(64)?;
     for _ in 0..entry_count {
         let key = buf.read_int::<u128>(128)?;
