@@ -5,12 +5,13 @@ mod twist_data;
 mod twist_names;
 mod twist_set;
 
-pub use crate::linalg::Facet;
 pub use piece_type::PieceType;
 pub use sim::SimplePuzzleSim;
 pub use twist::Twist;
 pub use twist_data::TwistData;
 pub use twist_set::TwistSet;
+
+pub use crate::linalg::Facet;
 
 /// Number of unique twists on the puzzle.
 pub const TWIST_COUNT: u8 = 8 * 23;

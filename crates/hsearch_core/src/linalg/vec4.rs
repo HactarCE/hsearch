@@ -1,7 +1,5 @@
-use std::{
-    fmt,
-    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
-};
+use std::fmt;
+use std::ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 use itertools::Itertools;
 

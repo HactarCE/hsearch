@@ -111,6 +111,7 @@ impl Stage2TrieKey {
         let word_shift = bit_count / 64;
         let bit_shift = bit_count % 64;
         let mut ret = [0; 3];
+        #[allow(clippy::needless_range_loop)] // better for clarity
         for i in 0..(3 - word_shift) {
             ret[i] = self.0[i + word_shift] >> bit_shift;
             if bit_shift > 0 && i + word_shift + 1 < 3 {

@@ -76,37 +76,6 @@ fn stage2() -> String {
     let target_c: u64 = collect_bits(s2_corner_stickers().map(|v| v[X] == -2 && v[W] >= 0));
     let target_re = target_r as u128 | (target_e << 16);
 
-    // let target_blocks: [(&Group, fn(Vec4) -> bool); 3] = [
-    //     (&full, |v| v[X] <= 0 && v[Y] <= 0 && v[Z] <= 0 && v[W] < 0),
-    //     (&full, |v| v[Y] <= 0 && v[Z] <= 0 && v[W] < 0),
-    //     (&w_sym, |v| v[Z] <= 0 && v[W] < 0),
-    // ];
-
-    // let indent = "            ";
-    // let target_constants = target_blocks
-    //     .into_iter()
-    //     .enumerate()
-    //     .map(|(i, (symmetry, predicate))| {
-    //         let index = i + 1;
-    //         let elems = symmetry
-    //             .elems()
-    //             .into_iter()
-    //             .map(|m| {
-    //                 let r = collect_bits::<u16>(s2_ridges().map(|v| predicate(m * v)));
-    //                 let e = collect_bits::<u64>(s2_edges().flat_map(|v| [predicate(m * v); 2]));
-    //                 let c = collect_bits::<u32>(s2_corners().flat_map(|v| [predicate(m * v); 2]));
-    //                 (r, e, c)
-    //             })
-    //             .sorted()
-    //             .dedup()
-    //             .map(|(r, e, c)| {
-    //                 format!("{indent}    Self::new(0x{r:04x}, 0x{e:016x}, 0x{c:08x}),")
-    //             })
-    //             .join("\n");
-    //         format!("pub const TARGET{index}: &[Self] = &[\n{elems}\n{indent}];")
-    //     })
-    //     .join(&format!("\n{indent}"));
-
     let re_lut = PermutationLut::new(std::iter::chain(s2_ridges(), s2_edge_stickers()));
     let re = re_lut.to_rust_code(128, 0, 1, "re");
     let c = PermutationLut::new(s2_corner_stickers()).to_rust_code(64, 0, 1, "c");

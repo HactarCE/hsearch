@@ -15,7 +15,8 @@ include!(concat!("../generated/stage4.rs"));
 /// 102 twists are allowed:
 ///
 /// - All `R` and `L` twists (46 twists)
-/// - `U`, `D`, `F`, `B`, `O`, `I` twists that stabilize the `X` axis (56 twists)
+/// - `U`, `D`, `F`, `B`, `O`, `I` twists that stabilize the `X` axis (56
+///   twists)
 ///
 /// ## Target
 ///

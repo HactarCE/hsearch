@@ -342,7 +342,8 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     use super::*;
-    use crate::{Stage, stages::Stage1};
+    use crate::Stage;
+    use crate::stages::Stage1;
 
     #[test]
     fn test_pruning_trie_ser_deser() {

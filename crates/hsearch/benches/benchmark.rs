@@ -81,8 +81,6 @@ fn bench_pruning_trie(c: &mut Criterion) {
 
     let mut g = c.benchmark_group("pruning_trie_lookup");
 
-    // bench_stage_pruning_trie_lookup(&mut g, &[Stage1::TARGET], 3, "Stage1", "s1_mid");
-    // bench_stage_pruning_trie_lookup(&mut g, &[Stage1::TARGET], 4, "Stage1", "s1_mid");
     bench_stage_pruning_trie_lookup(&mut g, &[Stage2::TARGET], 3, 2, "Stage2", "s2_left");
     bench_stage_pruning_trie_lookup(&mut g, &[Stage2::TARGET], 4, 3, "Stage2", "s2_left");
 }

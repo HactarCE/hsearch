@@ -107,8 +107,8 @@
 #[cfg(test)]
 extern crate criterion as _; // suppress unused-crate-dependencies warning
 
-pub use hsearch_core::*;
 pub use fxhash::FxHashMap as HashMap;
+pub use hsearch_core::*;
 
 #[macro_use]
 mod lut;

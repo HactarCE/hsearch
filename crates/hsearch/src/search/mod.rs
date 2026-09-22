@@ -2,8 +2,7 @@ use std::fmt;
 use std::ops::RangeInclusive;
 
 use itertools::Itertools;
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 
 use crate::prelude::*;
 use crate::stages::*;
@@ -32,7 +31,8 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     let mut partials = itertools::iproduct!(
         // replace M slice with any other slice
         Axis::ALL.map(|src| Mat4::rot(src, X)),
-        // replace I facet with any other facet around try leaving a different facet unsolved instead of F
+        // replace I facet with any other facet around try leaving a different
+        // facet unsolved instead of F
         [U, D, F, B, O, I].map(|f| f.mat4_to(I)),
     )
     .map(|(alternative_p_sep, alternative_f_facet)| alternative_f_facet * alternative_p_sep)
@@ -239,7 +239,7 @@ impl<SF, PF> Iddfs<SF, PF> {
                     self.dfs(init, PrevTwists::new(), depth, &mut vec![], &mut solutions);
                     solutions
                         .into_iter()
-                        .map(|new_segment| partial.push_segment::<S>(&new_segment))
+                        .map(|new_segment| partial.push_segment(&new_segment))
                         .collect_vec()
                 })
                 .collect();

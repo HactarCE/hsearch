@@ -1,10 +1,8 @@
-use std::{fmt, ops::Deref};
+use std::fmt;
+use std::ops::Deref;
 
 use super::{TWIST_COUNT, TwistData};
 use crate::linalg::*;
-
-// pub(super) static TWIST_DATA_TO_TWIST: LazyLock<HashMap<TwistData, Twist>> =
-//     LazyLock::new(|| std::iter::zip(super::TWIST_INDEX_TO_TWIST_DATA, Twist::iter()).collect());
 
 /// Index for a twist, in the range `0..184`.
 ///
@@ -14,17 +12,14 @@ pub struct Twist(u8);
 
 impl fmt::Display for Twist {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &super::twist_names::TWIST_TO_NAME[self.index() as usize] {
-            (facets, multiplier) => {
-                for facet in facets {
-                    write!(f, "{facet}")?;
-                }
-                if *multiplier != 1 {
-                    write!(f, "{multiplier}")?;
-                }
-                Ok(())
-            }
+        let (facets, multiplier) = &super::twist_names::TWIST_TO_NAME[self.index() as usize];
+        for facet in facets {
+            write!(f, "{facet}")?;
         }
+        if *multiplier != 1 {
+            write!(f, "{multiplier}")?;
+        }
+        Ok(())
     }
 }
 

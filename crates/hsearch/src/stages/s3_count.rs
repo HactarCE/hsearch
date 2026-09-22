@@ -118,9 +118,8 @@ impl Stage for Stage3 {
 
 #[cfg(test)]
 mod tests {
-    use crate::parse_twists;
-
     use super::*;
+    use crate::parse_twists;
 
     #[test]
     fn test_stage3_count() {

@@ -113,7 +113,7 @@ impl Partial {
 
     /// Adds a segment, returning a new partial solution.
     #[must_use]
-    pub fn push_segment<S: Stage>(&self, solution_segment: &[Twist]) -> Self {
+    pub fn push_segment(&self, solution_segment: &[Twist]) -> Self {
         let mut ret = self.clone();
         ret.twists.extend_from_slice(solution_segment);
         ret.boundaries.push(ret.twists.len());

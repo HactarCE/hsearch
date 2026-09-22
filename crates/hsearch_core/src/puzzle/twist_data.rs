@@ -1,7 +1,8 @@
 use std::fmt;
 
 use super::TWIST_COUNT;
-use crate::{Twist, linalg::*};
+use crate::Twist;
+use crate::linalg::*;
 
 /// Packed twist representation in 15 bits.
 ///

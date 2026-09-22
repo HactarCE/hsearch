@@ -1,8 +1,10 @@
-use std::{fmt, ops::Mul};
+use std::fmt;
+use std::ops::Mul;
 
 pub use Facet::{B, D, F, I, L, O, R, U};
 
-use crate::{Sign, linalg::*};
+use crate::Sign;
+use crate::linalg::*;
 
 /// Facet of the puzzle. Also a pair `(Axis, Sign)`.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
