@@ -14,6 +14,9 @@ criterion_main!(benches);
 criterion_group!(benches, criterion_benchmark);
 
 fn criterion_benchmark(c: &mut Criterion) {
+    std::env::set_current_dir(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
+        .unwrap();
+
     bench_do_twist(c);
     bench_pruning_trie(c);
 }
