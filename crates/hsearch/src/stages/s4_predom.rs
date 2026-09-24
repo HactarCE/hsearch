@@ -6,9 +6,14 @@ include!(concat!("../generated/stage4.rs"));
 
 /// Stage 4: Pre-domino
 ///
+/// ## Projection
+///
+/// This stage uses the domino projection described in the [crate] docs.
+///
 /// ## Invariants
 ///
-/// - All pieces must maintain their orientation with respect to the `X` axis.
+/// - The number and types of domino-(mis)oriented pieces must remain constant
+///   from stage 3.
 ///
 /// ## Move set
 ///
@@ -23,7 +28,8 @@ include!(concat!("../generated/stage4.rs"));
 /// - The puzzle is one (non-domino) move away from a valid domino-reduced
 ///   state.
 ///
-/// This target has 12 possible orientations.
+/// This target has 12 possible states under the projection, all in the same
+/// orbit under domino symmetry.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Stage4 {
     /// For each ridge *sticker* location, 1 bit indicating one of the following
@@ -35,7 +41,8 @@ pub struct Stage4 {
     /// An `R`/`L` sticker is correct iff it is on `R`/`L`, and a non-`R`/`L`
     /// sticker is correct iff it is _not_ on `R`/`L`.
     ///
-    /// Typically, this has exact four `1` bits.
+    /// When the counts from stage 3 are preserved, this has exactly four `1`
+    /// bits. When the puzzle is domino-reduced, this has exactly zero `1` bits.
     r: u64, // u48
 
     /// For each edge location, 2 bits indicating one of the following cases:
@@ -65,6 +72,8 @@ impl Default for Stage4 {
 impl Stage4 {
     /// Returns the set of target states.
     pub fn target() -> Vec<Stage4> {
+        // more moves are possible, but these are enough to cover all 12 unique
+        // states under domino projection
         parse_twists("UF UO DF DO FU FO BU BO OU OF IU IF")
             .into_iter()
             .map(|twist| Self::with_setup(&[twist]))

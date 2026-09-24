@@ -4,6 +4,12 @@ include!(concat!("../generated/stage2.rs"));
 
 /// Stage 2: Left block (1x3x3x2)
 ///
+/// ## Projection
+///
+/// This stage uses the domino projection described in the [crate] docs;
+/// however, in practice only a subset of pieces needs to be tracked because
+/// some remain solved under the invariants.
+///
 /// ## Invariants
 ///
 /// - All `R`/`L` ridges must remain oriented.
@@ -21,11 +27,11 @@ include!(concat!("../generated/stage2.rs"));
 ///
 /// ## Target
 ///
-/// - 1x3x3x2 block of `R`/`L`-oriented pieces in `L` (`[-1, -1, -1, 0]..=[-1,
-///   1, 1, 1]`)
+/// - 1x3x3x2 block of domino-oriented pieces in `L` (`[-1, -1, -1, 0]..=[-1, 1,
+///   1, 1]`)
 ///     - 5 ridges (already oriented from stage 1)
-///     - 8 oriented `R`/`L` edges
-///     - 4 oriented corners
+///     - 8 domino-oriented `R`/`L` edges
+///     - 4 domino-oriented corners
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Stage2 {
     /// For each `R`/`L`/`I` ridge location, 1 bit indicating one of the
@@ -34,8 +40,8 @@ pub struct Stage2 {
     /// - `1` = belongs in `R`/`L`
     /// - `0` = belongs in `M` slice
     ///
-    /// For each sticker of each `R`/`L`/`I` edge location, 1 bit indicating one
-    /// of the following cases:
+    /// For each `R`/`L`/`I` edge *sticker* location, 1 bit indicating one of
+    /// the following cases:
     ///
     /// - `1` = `R`/`L` sticker
     /// - `0` = other sticker
@@ -69,7 +75,7 @@ impl Stage for Stage2 {
     }
 
     fn from_state(state: SimplePuzzleSim) -> Self {
-        let is_in_stage2 = |v: Vec4| v[X] != 0 || v[W] < 0;
+        let is_in_stage2 = |v: Vec4| !(v[X] == 0 && v[W] >= 0);
 
         let r = state.pieces_to_bits(1, &[PieceType::Ridge], is_in_stage2, |init, _att| {
             (init[X] != 0) as u64

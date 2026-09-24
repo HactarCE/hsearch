@@ -31,8 +31,7 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     let mut partials = itertools::iproduct!(
         // replace M slice with any other slice
         Axis::ALL.map(|src| Mat4::rot(src, X)),
-        // replace I facet with any other facet around try leaving a different
-        // facet unsolved instead of F
+        // replace I facet with any other facet
         [U, D, F, B, O, I].map(|f| f.mat4_to(I)),
     )
     .map(|(alternative_p_sep, alternative_f_facet)| alternative_f_facet * alternative_p_sep)
@@ -79,18 +78,7 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     println!("Stage 4: Pre-domino");
     let target = Stage4::target();
     Iddfs::new::<Stage4>(
-        Stage3::TWISTS,
-        |s| s.is_target_solved(&target),
-        |s, d| s4_prune.query_should_prune(s.key(), d),
-        1..=7,
-    )
-    .iddfs_extend(&mut partials)?;
-    cleanup_and_display_solutions("stage 4", &mut partials, true);
-
-    println!("Stage 4: Pre-domino");
-    let target = Stage4::target();
-    Iddfs::new::<Stage4>(
-        Stage3::TWISTS,
+        Stage4::TWISTS,
         |s| s.is_target_solved(&target),
         |s, d| s4_prune.query_should_prune(s.key(), d),
         1..=7,

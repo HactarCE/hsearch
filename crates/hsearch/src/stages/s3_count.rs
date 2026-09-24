@@ -6,16 +6,25 @@ include!(concat!("../generated/stage3.rs"));
 
 /// Stage 3: Domino misorientation
 ///
+/// ## Projection
+///
+/// This stage uses the domino projection described in the [crate] docs;
+/// however, in practice only a subset of pieces needs to be tracked because
+/// some remain solved under the invariants.
+///
+/// TODO: also track the edge orientation parity somehow? yikes
+///
 /// ## Invariants
 ///
 /// - The 2x3x3x2 block of pieces at `[-1, -1, -1, 0]..[0, 1, 1, 1]` (i.e., `~(R
-///   | I)`) must be setwise-preserved and remain oriented & `M`-separated.
-///     - The 1x3x3x2 subblock in the `M` slice must be setwise-preserved
-///     - The 1x3x3x2 subblock in the `L` layer must be setwise-preserved and
-///       remain oriented.
+///   | I)`) must be setwise-preserved and remain domino-oriented &
+///   `M`-separated.
+///     - The mid block (1x3x3x2 in `M`) must be setwise-preserved
+///     - The left block (1x3x3x2 in `L`) must be setwise-preserved and remain
+///       domino-oriented.
 /// - All `R`/`L` ridges must remain oriented.
 ///
-/// Orientation is defined relative to `R`/`L`.
+/// Domino orientation is defined relative to `R`/`L`.
 ///
 /// ## Move set
 ///
@@ -28,10 +37,10 @@ include!(concat!("../generated/stage3.rs"));
 /// ## Target
 ///
 /// - `M` ridges: 10 in `M`, 2 in `R`/`L`
-/// - `R`/`L` ridges: 2 in `M`, 10 oriented in `R`/`L`
+/// - `R`/`L` ridges: 2 in `M`, 10 domino-oriented in `R`/`L`
 /// - `M` edges: 4 in `M`, 4 in `R`/`L`
-/// - `R`/`L` edges: 4 in `M`, 4 misoriented in `R`/`L`, 4 oriented in `R`/`L`
-/// - corners: 8 misoriented, 8 oriented
+/// - `R`/`L` edges: 4 in `M`, 4 misoriented in `R`/`L`, 16 oriented in `R`/`L`
+/// - corners: 8 domino-misoriented, 8 domino-oriented
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Stage3 {
     /// For each `R`/`I` ridge location, 1 bit indicating one of the following
@@ -44,9 +53,9 @@ pub struct Stage3 {
     /// For each `R`/`I` edge location, 2 bits indicating one of the following
     /// cases:
     ///
-    /// - `11` = belongs in `R`/`L`, good orientation
-    /// - `01` = belongs in `R`/`L`, bad orientation 1
-    /// - `10` = belongs in `R`/`L`, bad orientation 2
+    /// - `11` = belongs in `R`/`L`, good domino orientation
+    /// - `01` = belongs in `R`/`L`, bad domino orientation 1
+    /// - `10` = belongs in `R`/`L`, bad domino orientation 2
     /// - `00` = belongs in `M` slice, any orientation
     ///
     /// For each `R`/`I` corner location, 2 bits indicating the axis containing
@@ -96,7 +105,7 @@ impl Stage for Stage3 {
     }
 
     fn from_state(state: SimplePuzzleSim) -> Self {
-        let is_in_stage3 = |v: Vec4| v[X] == 1 || v[W] == -1;
+        let is_in_stage3 = |v: Vec4| !(v[X] <= 0 && v[W] >= 0);
 
         Self {
             r: state.pieces_to_bits(1, &[PieceType::Ridge], is_in_stage3, |init, _att| {

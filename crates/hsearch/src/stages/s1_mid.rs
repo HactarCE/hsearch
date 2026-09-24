@@ -4,6 +4,16 @@ include!(concat!("../generated/stage1.rs"));
 
 /// Stage 1: Mid block (1x3x3x2) + `R`/`L` ridge orientation
 ///
+/// ## Projection
+///
+/// - Each ridge is labeled based on whether it belongs in `M` or `R`/`L`.
+///     - `R`/`L` ridge stickers are labeled such that their 2 orientations are
+///       distinguishable.
+///     - `M` ridge orientations are indistinguishable.
+/// - Each edge is labeled based on whether it belongs in `M` or `R`/`L`.
+///     - Edge orientations are indistinguishable.
+/// - Corners are ignored.
+///
 /// ## Invariants
 ///
 /// There are no invariants to uphold.
@@ -18,9 +28,9 @@ include!(concat!("../generated/stage1.rs"));
 ///   (i.e., `~(R | L | I)`)
 /// - R/L ridges are oriented
 ///
-/// This target has 12 possible orientations but, because we try all possible
-/// orientations of the scramble, only one orientation of the target needs to be
-/// checked.
+/// This target has 24 possible orientations but instead of reorienting the
+/// target, we try 24 different orientations of the scramble so that the pruning
+/// table can be smaller.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Stage1 {
     /// For each edge location, 1 bit indicating one of the following cases:

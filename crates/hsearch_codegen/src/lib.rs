@@ -56,7 +56,7 @@ fn stage1() -> String {
 }
 
 fn stage2() -> String {
-    let is_in_stage2 = |v: &Vec4| v[X] != 0 || v[W] < 0;
+    let is_in_stage2 = |v: &Vec4| !(v[X] == 0 && v[W] >= 0);
 
     let s2_ridges = || ridges().filter(is_in_stage2);
     let s2_edge_stickers = || PieceType::Edge.all_stickers().filter(is_in_stage2);
@@ -104,7 +104,7 @@ fn stage2() -> String {
 fn stage3() -> String {
     use hsearch_core::stage_utils::rl_eo;
 
-    let is_in_stage3 = |v: &Vec4| v[X] == 1 || v[W] == -1;
+    let is_in_stage3 = |v: &Vec4| !(v[X] <= 0 && v[W] >= 0);
 
     let s3_ridges = || ridges().filter(is_in_stage3);
     let s3_edges = || edges().filter(is_in_stage3);
