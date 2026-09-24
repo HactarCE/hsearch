@@ -2,7 +2,7 @@ use super::*;
 
 include!(concat!("../generated/stage1.rs"));
 
-/// Stage 1: Mid block (1x3x3x2) + `I`/`O` ridge orientation
+/// Stage 1: Mid block (1x3x3x2) + `R`/`L` ridge orientation
 ///
 /// ## Invariants
 ///
@@ -14,9 +14,9 @@ include!(concat!("../generated/stage1.rs"));
 ///
 /// ## Target
 ///
-/// - 3x3x2x1 block of `M` pieces in `M` at `[0, -1, -1, 0]..=[0, 1, 1, 1]`
+/// - 1x3x3x2 block of `M` pieces in `M` at `[0, -1, -1, 0]..=[0, 1, 1, 1]`
 ///   (i.e., `~(R | L | I)`)
-/// - R/L 2c pieces are oriented
+/// - R/L ridges are oriented
 ///
 /// This target has 12 possible orientations but, because we try all possible
 /// orientations of the scramble, only one orientation of the target needs to be

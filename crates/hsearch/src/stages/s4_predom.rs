@@ -12,15 +12,16 @@ include!(concat!("../generated/stage4.rs"));
 ///
 /// ## Move set
 ///
-/// 102 twists are allowed:
+/// 88 twists are allowed:
 ///
 /// - All `R` and `L` twists (46 twists)
-/// - `U`, `D`, `F`, `B`, `O`, `I` twists that stabilize the `X` axis (56
+/// - `U`, `D`, `F`, `B`, `O`, `I` twists that stabilize the `X` axis (42
 ///   twists)
 ///
 /// ## Target
 ///
-/// - The puzzle is one move away from domino reduction.
+/// - The puzzle is one (non-domino) move away from a valid domino-reduced
+///   state.
 ///
 /// This target has 12 possible orientations.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

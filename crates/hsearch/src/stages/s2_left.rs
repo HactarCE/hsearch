@@ -6,7 +6,7 @@ include!(concat!("../generated/stage2.rs"));
 ///
 /// ## Invariants
 ///
-/// - All `I`/`O` ridges must remain oriented.
+/// - All `R`/`L` ridges must remain oriented.
 /// - The 1x3x3x2 block of `M` pieces in `M` at `[0, -1, -1, 0]..=[0, 1, 1, 1]`
 ///   (i.e., `~(R | L | I)`) must be setwise-preserved.
 ///
@@ -24,7 +24,7 @@ include!(concat!("../generated/stage2.rs"));
 /// - 1x3x3x2 block of `R`/`L`-oriented pieces in `L` (`[-1, -1, -1, 0]..=[-1,
 ///   1, 1, 1]`)
 ///     - 5 ridges (already oriented from stage 1)
-///     - 8 oriented `I`/`O` edges
+///     - 8 oriented `R`/`L` edges
 ///     - 4 oriented corners
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Stage2 {

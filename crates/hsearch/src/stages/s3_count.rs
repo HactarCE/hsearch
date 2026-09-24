@@ -15,6 +15,8 @@ include!(concat!("../generated/stage3.rs"));
 ///       remain oriented.
 /// - All `R`/`L` ridges must remain oriented.
 ///
+/// Orientation is defined relative to `R`/`L`.
+///
 /// ## Move set
 ///
 /// 52 twists are allowed:

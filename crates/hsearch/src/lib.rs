@@ -26,7 +26,7 @@
 //! | Piece type | Element    | Stickers per piece | Piece count |
 //! | ---------- | ---------- | ------------------ | ----------- |
 //! | Core       |            | 0                  | 1           |
-//! | Center     | facet/cell | 1                  | 6           |
+//! | Center     | facet/cell | 1                  | 8           |
 //! | Ridge      | ridge/face | 2                  | 24          |
 //! | Edge       | edge       | 3                  | 32          |
 //! | Corner     | vertex     | 4                  | 16          |
