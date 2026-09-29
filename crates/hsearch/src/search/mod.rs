@@ -1,4 +1,5 @@
 use std::fmt;
+use std::marker::PhantomData;
 use std::ops::RangeInclusive;
 
 use itertools::Itertools;
@@ -39,13 +40,9 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     .collect_vec();
 
     println!("Stage 1: Mid");
-    Iddfs::new::<Stage1>(
-        Stage1::TWISTS,
-        |s| s.is_target_solved(),
-        |s, d| s1_prune.query_should_prune(s.into(), d),
-        3..=6,
-    )
-    .iddfs_extend(&mut partials)?;
+    Iddfs::<Stage1, _>::new(Stage1::TWISTS, |s| s.is_target_solved(), 3..=6)
+        .with_prune(|s, d| s1_prune.query_should_prune(s.into(), d))
+        .iddfs_extend(&mut partials)?;
 
     // Optionally swap R/L
     partials = partials
@@ -56,125 +53,42 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     cleanup_and_display_solutions("stage 1", &mut partials, false);
 
     println!("Stage 2: Left");
-    Iddfs::new::<Stage2>(
-        Stage2::TWISTS,
-        |s| s.is_target_solved(),
-        |s, d| s2_prune.query_should_prune(s.into(), d),
-        1..=6,
-    )
-    .iddfs_extend(&mut partials)?;
+    Iddfs::<Stage2, _>::new(Stage2::TWISTS, |s| s.is_target_solved(), 1..=6)
+        .with_prune(|s, d| s2_prune.query_should_prune(s.into(), d))
+        .iddfs_extend(&mut partials)?;
     cleanup_and_display_solutions("stage 2", &mut partials, false);
 
     println!("Stage 3: Counts");
-    Iddfs::new::<Stage3>(
-        Stage3::TWISTS,
-        |s| s.is_target_solved(),
-        |_, _| false,
-        1..=4,
-    )
-    .iddfs_extend(&mut partials)?;
+    Iddfs::<Stage3, _>::new(Stage3::TWISTS, |s| s.is_target_solved(), 1..=4)
+        .iddfs_extend(&mut partials)?;
     cleanup_and_display_solutions("stage 3", &mut partials, false);
 
-    for block_count in 1..=8 {
-        println!("Stage 4.{block_count}: Pre-domino block {block_count}");
-        Iddfs::new::<Stage4>(
-            Stage4::TWISTS,
-            |s| s.is_311_target_solved(block_count),
-            |_, _| false,
-            1..=4,
-        )
+    println!("Stage 4.1: Pre-domino (2x2x2)");
+    Iddfs::<Stage4, _>::new(Stage4::TWISTS, |s| s.is_222_target_solved(), 1..=4)
         .iddfs_extend(&mut partials)?;
-        cleanup_and_display_solutions(&format!("stage 4.{block_count}"), &mut partials, false);
-    }
+    cleanup_and_display_solutions("stage 4.1", &mut partials, false);
+
+    println!("Stage 4.2: Pre-domino (2x2x3)");
+    Iddfs::<Stage4, _>::new(Stage4::TWISTS, |s| s.is_223_target_solved(), 1..=4)
+        .iddfs_extend(&mut partials)?;
+    cleanup_and_display_solutions("stage 4.2", &mut partials, false);
+
+    println!("Stage 4.3: Pre-domino (7 blocks)");
+    Iddfs::<Stage4, _>::new(Stage4::TWISTS, |s| s.is_311_target_solved(7), 1..=4)
+        .iddfs_extend(&mut partials)?;
+    cleanup_and_display_solutions("stage 4.3", &mut partials, false);
+
+    println!("Stage 4.4: Pre-domino (8 blocks)");
+    Iddfs::<Stage4, _>::new(Stage4::TWISTS, |s| s.is_311_target_solved(8), 1..=4)
+        .iddfs_extend(&mut partials)?;
+    cleanup_and_display_solutions("stage 4.4", &mut partials, false);
 
     println!("Stage 4: Pre-domino");
     let target = Stage4::target();
-    Iddfs::new::<Stage4>(
-        Stage4::TWISTS,
-        |s| s.is_target_solved(&target),
-        |s, d| s4_prune.query_should_prune(s.key(), d),
-        1..=7,
-    )
-    .iddfs_extend(&mut partials)?;
+    Iddfs::<Stage4, _>::new(Stage4::TWISTS, |s| s.is_target_solved(&target), 1..=7)
+        .with_prune(|s, d| s4_prune.query_should_prune(s.key(), d))
+        .iddfs_extend(&mut partials)?;
     cleanup_and_display_solutions("stage 4", &mut partials, true);
-
-    //
-    //
-    //
-    //
-    //
-
-    // println!("Stage 2.2");
-    // Iddfs::new::<Stage2>(
-    //     &Stage2::TWISTS,
-    //     |s| s.is_target_solved(Stage2::TARGET2),
-    //     |_, _| false,
-    //     1..=4,
-    // )
-    // .iddfs_extend(&mut partials)?;
-    // cleanup_and_display_solutions("stage 2.2", &mut partials, false);
-
-    // println!("Stage 2.3");
-    // Iddfs::new::<Stage2>(
-    //     &Stage2::TWISTS,
-    //     |s| s.is_target_solved(Stage2::TARGET3),
-    //     |_, _| false,
-    //     1..=4,
-    // )
-    // .iddfs_extend(&mut partials)?;
-    // cleanup_and_display_solutions("stage 2.3", &mut partials, false);
-
-    // // Normalize so that the block is on `I`
-    // partials.par_iter_mut().for_each(|partial| {
-    //     if Stage2::with_setup(&partial.twists)
-    //         .which_target3()
-    //         .expect("bad solution")
-    //         == Sign::Neg
-    //     {
-    //         *partial = partial.transform_by(Mat4::refl(W));
-    //     }
-    // });
-
-    // println!("Stage 3.1");
-    // Iddfs::new::<Stage3>(
-    //     &Stage3::TWISTS,
-    //     |s| s.is_target_solved(Stage3::TARGET1),
-    //     |_, _| false,
-    //     1..=4,
-    // )
-    // .iddfs_extend(&mut partials)?;
-    // cleanup_and_display_solutions("stage 3.1", &mut partials, false);
-
-    // println!("Stage 3.2");
-    // Iddfs::new::<Stage3>(
-    //     &Stage3::TWISTS,
-    //     |s| s.is_target_solved(Stage3::TARGET2),
-    //     |_, _| false,
-    //     1..=4,
-    // )
-    // .iddfs_extend(&mut partials)?;
-
-    // // Normalize so that unsolved `I`/`O` region is on `UO`.
-    // partials.par_iter_mut().for_each(|partial| {
-    //     let secondary_facet = Stage3::with_setup(&partial.twists)
-    //         .which_target2()
-    //         .expect("bad solution");
-    //     if secondary_facet != Facet::U {
-    //         *partial = partial.transform_by(secondary_facet.mat4_to(U));
-    //     }
-    // });
-
-    // cleanup_and_display_solutions("stage 3.2", &mut partials, true);
-
-    // println!("Stage 4");
-    // Iddfs::new::<Stage4>(
-    //     &Stage4::TWISTS,
-    //     |s| s.is_target_solved(Stage4::SOLVED),
-    //     |s, d| s4_prune.query_should_prune(s.key(), d),
-    //     1..=13,
-    // )
-    // .iddfs_extend(&mut partials)?;
-    // cleanup_and_display_solutions("stage 4", &mut partials, true);
 
     Ok(())
 }
@@ -201,36 +115,47 @@ fn cleanup_and_display_solutions(stage_name: &str, partials: &mut Vec<Partial>, 
 ///
 /// - `SF` = solved function ("Is this state solved?")
 /// - `PF` = prune function ("Should this state be pruned?")
-pub struct Iddfs<SF, PF> {
+pub struct Iddfs<S, SF, PF = fn(S, u8) -> bool> {
     twist_subset: Vec<Twist>,
     is_solved: SF,
     should_prune: PF,
     depth_range: RangeInclusive<u8>,
+    _marker: PhantomData<S>,
 }
 
-impl<SF, PF> Iddfs<SF, PF> {
-    pub fn new<S>(
-        twist_subset: TwistSet,
-        is_solved: SF,
-        should_prune: PF,
-        depth_range: RangeInclusive<u8>,
-    ) -> Self
+impl<S: Stage, SF> Iddfs<S, SF> {
+    pub fn new(twist_subset: TwistSet, is_solved: SF, depth_range: RangeInclusive<u8>) -> Self
     where
         S: Stage,
         SF: Sync + Fn(S) -> bool,
-        PF: Sync + Fn(S, u8) -> bool,
     {
         Self {
             twist_subset: twist_subset.to_vec(),
             is_solved,
-            should_prune,
+            should_prune: |_, _| false,
             depth_range,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<S: Stage, SF, PF> Iddfs<S, SF, PF> {
+    pub fn with_prune<PF2>(self, should_prune: PF2) -> Iddfs<S, SF, PF2>
+    where
+        PF2: Sync + Fn(S, u8) -> bool,
+    {
+        Iddfs {
+            twist_subset: self.twist_subset,
+            is_solved: self.is_solved,
+            should_prune,
+            depth_range: self.depth_range,
+            _marker: PhantomData,
         }
     }
 
     /// Extends each partial using the minimum search depth necessary. Returns
     /// `Ok` if successful, or `Err` if unsuccessful.
-    pub fn iddfs_extend<S: Stage>(&self, partials: &mut Vec<Partial>) -> Result<(), NoSolution>
+    pub fn iddfs_extend(&self, partials: &mut Vec<Partial>) -> Result<(), NoSolution>
     where
         SF: Sync + Fn(S) -> bool,
         PF: Sync + Fn(S, u8) -> bool,
@@ -263,7 +188,7 @@ impl<SF, PF> Iddfs<SF, PF> {
     ///
     /// - `solution_buffer` is the current solution segment so far
     /// - `solutions` is a collection of all complete solution segments
-    fn dfs<S: Stage>(
+    fn dfs(
         &self,
         state: S,
         prev_twists: PrevTwists,

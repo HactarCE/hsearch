@@ -1,4 +1,5 @@
-use std::{collections::BTreeMap, sync::LazyLock};
+use std::collections::BTreeMap;
+use std::sync::LazyLock;
 
 use itertools::Itertools;
 
@@ -65,72 +66,132 @@ impl Default for Stage4 {
     }
 }
 
-impl Stage4 {
-    // pub fn is_322_target_solved(self) -> bool {}
+// We are not actually targeting these states per se because they have
+// too many pieces unsolved, but these states are dense with pieces in
+// the desired orientation for a corresponding target state.
+static TARGET_STATES: LazyLock<[Stage4; 6]> = LazyLock::new(|| {
+    [
+        Stage4::with_setup(&parse_twists("UF DF")),
+        Stage4::with_setup(&parse_twists("UO DO")),
+        Stage4::with_setup(&parse_twists("FU BU")),
+        Stage4::with_setup(&parse_twists("FO BO")),
+        Stage4::with_setup(&parse_twists("OU IU")),
+        Stage4::with_setup(&parse_twists("OF IF")),
+    ]
+});
 
-    // pub fn is_321_target_solved(self) -> bool {}
+/// Deduplicates target blocks and associates them to a mask of target states
+/// (indices into `TARGET_STATES`).
+fn consolidate_target_blocks(target_blocks: [Vec<u128>; 6]) -> (Vec<u128>, Vec<u8>) {
+    let mut block_to_states = BTreeMap::new(); // btreemap for determinism
+    for (i, blocks) in target_blocks.iter().enumerate() {
+        for &block in blocks {
+            *block_to_states.entry(block).or_default() |= 1 << i;
+        }
+    }
+    (
+        block_to_states.keys().copied().collect(),
+        block_to_states.values().copied().collect(),
+    )
+}
+
+impl Stage4 {
+    pub fn is_222_target_solved(self) -> bool {
+        /// Returns a list of 1x2x2x2 blocks, given an axis order.
+        ///
+        /// - `axes[0]` is the axis along which only ±1 are considered (not 0)
+        ///   and where the block has length `1`.
+        /// - `axes[1]`, `axes[2]`, and axes[3] are the axes along which 0 and
+        ///   ±1 are considered and where the block has length `2`.
+        fn block_1222(axes: [Axis; 4]) -> Vec<u128> {
+            let [a, b, c, d] = axes;
+            itertools::iproduct!([-1, 1], [-1, 1], [-1, 1], [-1, 1])
+                .map(|(q, r, s, t)| {
+                    Stage4::packed_piece_mask(|v| v[a] == q && v[b] != r && v[c] != s && v[d] != t)
+                })
+                .collect()
+        }
+
+        static TARGET_BLOCK_MASKS: LazyLock<(Vec<u128>, Vec<u8>)> = LazyLock::new(|| {
+            consolidate_target_blocks([
+                block_1222([Y, X, Z, W]),
+                block_1222([Y, X, W, Z]),
+                block_1222([Z, X, Y, W]),
+                block_1222([Z, X, W, Y]),
+                block_1222([W, X, Y, Z]),
+                block_1222([W, X, Z, Y]),
+            ])
+        });
+
+        self.is_target_block_quantity_solved(&TARGET_BLOCK_MASKS, 1)
+    }
+
+    pub fn is_223_target_solved(self) -> bool {
+        /// Returns a list of 1x2x2x3 blocks, given an axis order.
+        ///
+        /// - `axes[0]` is the axis along which only ±1 are considered (not 0)
+        ///   and where the block has length `1`.
+        /// - `axes[1]` and `axes[2]` are the axes along which 0 and ±1 are
+        ///   considered and where the block has length `2`.
+        /// - `axes[3]` is the axis along which the block has length `3`.
+        fn block_1223(axes: [Axis; 4]) -> Vec<u128> {
+            let [a, b, c, _d] = axes;
+            itertools::iproduct!([-1, 1], [-1, 1], [-1, 1],)
+                .map(|(q, r, s)| Stage4::packed_piece_mask(|v| v[a] == q && v[b] != r && v[c] != s))
+                .collect()
+        }
+
+        static TARGET_BLOCK_MASKS: LazyLock<(Vec<u128>, Vec<u8>)> = LazyLock::new(|| {
+            consolidate_target_blocks([
+                block_1223([Y, X, Z, W]),
+                block_1223([Y, X, W, Z]),
+                block_1223([Z, X, Y, W]),
+                block_1223([Z, X, W, Y]),
+                block_1223([W, X, Y, Z]),
+                block_1223([W, X, Z, Y]),
+            ])
+        });
+
+        self.is_target_block_quantity_solved(&TARGET_BLOCK_MASKS, 1)
+    }
 
     pub fn is_311_target_solved(self, target_block_count: u8) -> bool {
-        type S4TargetBlocks = [u128; 18];
-
         /// Returns a list of 1x1x1x3 blocks, given an axis order.
         ///
         /// - `axes[0]` is the axis along which only ±1 are considered (not 0)
         /// - `axes[1]` and `axes[2]` are the axes along which 0 and ±1 are
-        ///   considered.
-        /// - `axes[3]` is the axis along which the `3` dimension of the block
-        ///   is oriented
-        fn blocks_3111(axes: [Axis; 4]) -> [u128; 18] {
+        ///   considered
+        /// - `axes[3]` is the axis along which the block has length `3`
+        fn blocks_3111(axes: [Axis; 4]) -> Vec<u128> {
             let [a, b, c, _d] = axes;
             itertools::iproduct!([-1, 1], -1..=1, -1..=1)
                 .map(|(q, r, s)| Stage4::packed_piece_mask(|v| v[a] == q && v[b] == r && v[c] == s))
-                .collect_array()
-                .unwrap()
+                .collect()
         }
 
-        // We are not actually targeting these states per se because they have
-        // too many pieces unsolved, but these states are dense with pieces in
-        // the desired orientation for a corresponding target state.
-        static TARGET_STATES: LazyLock<[Stage4; 6]> = LazyLock::new(|| {
-            [
-                Stage4::with_setup(&parse_twists("UF DF")),
-                Stage4::with_setup(&parse_twists("UO DO")),
-                Stage4::with_setup(&parse_twists("FU BU")),
-                Stage4::with_setup(&parse_twists("FO BO")),
-                Stage4::with_setup(&parse_twists("OU IU")),
-                Stage4::with_setup(&parse_twists("OF IF")),
-            ]
-        });
-
-        // 3x1x1 blocks not along the X axis
-        static TARGET_BLOCKS: LazyLock<[S4TargetBlocks; 6]> = LazyLock::new(|| {
-            [
+        static TARGET_BLOCK_MASKS: LazyLock<(Vec<u128>, Vec<u8>)> = LazyLock::new(|| {
+            consolidate_target_blocks([
                 blocks_3111([Y, X, Z, W]),
                 blocks_3111([Y, X, W, Z]),
                 blocks_3111([Z, X, Y, W]),
                 blocks_3111([Z, X, W, Y]),
                 blocks_3111([W, X, Y, Z]),
                 blocks_3111([W, X, Z, Y]),
-            ]
+            ])
         });
 
-        static TARGET_BLOCK_MASKS: LazyLock<(Vec<u128>, Vec<u8>)> = LazyLock::new(|| {
-            let mut block_to_states = BTreeMap::new(); // btreemap for determinism
-            for (i, blocks) in TARGET_BLOCKS.iter().enumerate() {
-                for &block in blocks {
-                    *block_to_states.entry(block).or_default() |= 1 << i;
-                }
-            }
-            (
-                block_to_states.keys().copied().collect(),
-                block_to_states.values().copied().collect(),
-            )
-        });
+        self.is_target_block_quantity_solved(&TARGET_BLOCK_MASKS, target_block_count)
+    }
 
+    fn is_target_block_quantity_solved(
+        self,
+        consolidated_target_blocks: &(Vec<u128>, Vec<u8>),
+        target_block_count: u8,
+    ) -> bool {
         let mut similar_piece_masks = TARGET_STATES.map(|target| self.similar_piece_mask(target));
 
         let mut block_count = 0;
-        let (target_block_masks, states_for_target_block_masks) = &*TARGET_BLOCK_MASKS;
+        let (target_block_masks, states_for_target_block_masks) = consolidated_target_blocks;
         for (&target_block_mask, &target_block_state_mask) in
             std::iter::zip(target_block_masks, states_for_target_block_masks)
         {
@@ -147,7 +208,7 @@ impl Stage4 {
                     return true;
                 }
                 for similar_pieces in &mut similar_piece_masks {
-                    *similar_pieces &= !target_block_mask
+                    *similar_pieces &= !target_block_mask;
                 }
             }
         }
