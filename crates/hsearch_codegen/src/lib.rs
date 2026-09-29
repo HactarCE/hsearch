@@ -9,7 +9,7 @@ mod util;
 use orientation_lut::OrientationLut;
 use permutation_lut::PermutationLut;
 use textwrap::dedent;
-use util::{collect_bits, corners, edges, preserved_bits, ridges};
+use util::{corners, edges, preserved_bits, ridges};
 
 pub fn generate_all(out_dir: &Path) -> std::io::Result<()> {
     std::fs::write(out_dir.join("stage1.rs"), stage1())?;
@@ -170,13 +170,14 @@ fn stage3() -> String {
 }
 
 fn stage4() -> String {
-    use hsearch_core::stage_utils::rl_eo;
+    use hsearch_core::stage_utils::{rl_eo, xyz_ro};
 
-    let solved_r: &str = "0";
+    let solved_r: u64 = collect_bits(ridges().flat_map(|v| [v[X] != 0, false]));
     let solved_e: u64 = collect_bits(edges().flat_map(|v| [v[X] != 0; 2]));
     let solved_c: u32 = collect_bits(corners().flat_map(|_| [false; 2]));
 
-    let r = PermutationLut::new(PieceType::Ridge.all_stickers()).to_rust_code(64, 0, 1, "r");
+    let ro = OrientationLut::new(ridges(), 3, xyz_ro).to_rust_code(64, 0, 2, "r");
+    let rp = PermutationLut::new(ridges()).to_rust_code(64, 0, 2, "r");
     let eo = OrientationLut::new(edges(), 4, rl_eo).to_rust_code(64, 0, 2, "e");
     let ep = PermutationLut::new(edges()).to_rust_code(64, 0, 2, "e");
     let co = OrientationLut::new(corners(), 4, |r, _v, o| {
@@ -190,13 +191,14 @@ fn stage4() -> String {
     dedent(&format!(
         "
         impl Stage4 {{
-            pub const SOLVED: Self = Self {{ r: {solved_r}, e: 0x{solved_e:016x}, c: 0x{solved_c:08x} }};
+            pub const SOLVED: Self = Self {{ r: 0x{solved_r:012x}, e: 0x{solved_e:016x}, c: 0x{solved_c:08x} }};
 
             const GENERATED_TWISTS: TwistSet = {twist_set:?};
 
             fn generated_do_twist(self, twist: Twist) -> Self {{
                 let Self {{ r, e, c }} = self;
-                let r = {r};
+                let r = {ro};
+                let r = {rp};
                 let e = {eo};
                 let e = {ep};
                 let c = {co};

@@ -84,9 +84,7 @@ impl PermutationLut {
             })
             .join("\n");
 
-        format!(
-            "apply_permutation_lut!(u{int_width}, {state_var}, {twist_var}, [\n{rows}\n{INDENT}])"
-        )
+        format!("apply_permutation_lut!({state_var}, {twist_var}, [\n{rows}\n{INDENT}])")
     }
 
     /// Returns the twists supported by the permutation.

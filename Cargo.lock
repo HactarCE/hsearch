@@ -402,7 +402,6 @@ version = "0.1.0"
 dependencies = [
  "hsearch_core",
  "itertools 0.15.0",
- "num-traits",
  "textwrap",
 ]
 

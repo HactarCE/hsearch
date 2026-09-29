@@ -123,7 +123,7 @@ impl Vec4 {
 
     /// Returns an iterator over all coordinates in a region including the
     /// endpoints.
-    pub fn region(min: Vec4, max: Vec4) -> impl Iterator<Item = Vec4> {
+    pub fn region(min: Vec4, max: Vec4) -> impl Iterator<Item = Vec4> + Clone {
         itertools::iproduct!(
             min[W]..=max[W],
             min[Z]..=max[Z],

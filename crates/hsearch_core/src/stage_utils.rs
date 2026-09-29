@@ -1,12 +1,14 @@
 use crate::*;
 
-/// Returns an updated ridge orientation relative to the first axis on which it
-/// has nonzero coordinate. I.e., X axis if it is on `R`/`L`, otherwise Y axis
-/// if it is on `U`/`D`, otherwise `Z` axis.
+/// Returns an updated ridge orientation for `01` or `10` relative to the first
+/// axis on which it has nonzero coordinate. I.e., X axis if it is on `R`/`L`,
+/// otherwise Y axis if it is on `U`/`D`, otherwise `Z` axis.
 ///
 /// - `r` = Rotation matrix to apply
 /// - `v` = Old position
 /// - `o` = Old orientation bits (just lowest 2 bits)
+///
+/// Orientations `00` and `11` are preserved.
 pub fn xyz_ro(r: Mat4, v: Vec4, o: u8) -> u8 {
     /// Canonical axis order for determining ridge orientation.
     const AXIS_ORDER: [Axis; 4] = [X, Y, Z, W];

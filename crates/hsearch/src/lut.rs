@@ -1,9 +1,14 @@
+macro_rules! apply_permutation {
+    ($input:expr, [ $((& $mask:literal << $delta:literal))|* ]) => {
+        $( ($input & $mask).rotate_left($delta) )|*
+    };
+}
+
 macro_rules! apply_permutation_lut {
-    ($int_type:ty, $input:expr, $twist:expr, [$($i:literal => [ $((& $mask:literal << $delta:literal))|* ]),* $(,)?]) => {
+    ($input:expr, $twist:expr, [$($i:literal => [ $((& $mask:literal << $delta:literal))|* ]),* $(,)?]) => {
         {
-            let input: $int_type = $input;
             match Twist::index($twist) {
-                $( $i => $( <$int_type>::rotate_left(input & $mask, $delta) )|* , )*
+                $( $i => apply_permutation!($input, [$((& $mask << $delta))|*]), )*
                 _ => panic!("twist not allowed in this stage: {}", $twist),
             }
         }

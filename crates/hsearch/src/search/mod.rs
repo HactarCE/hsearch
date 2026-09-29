@@ -53,7 +53,7 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
         .flat_map(|partial| [partial.transform_by(Mat4::refl(X)), partial])
         .collect();
 
-    cleanup_and_display_solutions("stage 1", &mut partials, true);
+    cleanup_and_display_solutions("stage 1", &mut partials, false);
 
     println!("Stage 2: Left");
     Iddfs::new::<Stage2>(
@@ -63,7 +63,7 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
         1..=6,
     )
     .iddfs_extend(&mut partials)?;
-    cleanup_and_display_solutions("stage 2", &mut partials, true);
+    cleanup_and_display_solutions("stage 2", &mut partials, false);
 
     println!("Stage 3: Counts");
     Iddfs::new::<Stage3>(
@@ -73,7 +73,19 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
         1..=4,
     )
     .iddfs_extend(&mut partials)?;
-    cleanup_and_display_solutions("stage 3", &mut partials, true);
+    cleanup_and_display_solutions("stage 3", &mut partials, false);
+
+    for block_count in 1..=8 {
+        println!("Stage 4.{block_count}: Pre-domino block {block_count}");
+        Iddfs::new::<Stage4>(
+            Stage4::TWISTS,
+            |s| s.is_311_target_solved(block_count),
+            |_, _| false,
+            1..=4,
+        )
+        .iddfs_extend(&mut partials)?;
+        cleanup_and_display_solutions(&format!("stage 4.{block_count}"), &mut partials, false);
+    }
 
     println!("Stage 4: Pre-domino");
     let target = Stage4::target();
@@ -85,6 +97,12 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     )
     .iddfs_extend(&mut partials)?;
     cleanup_and_display_solutions("stage 4", &mut partials, true);
+
+    //
+    //
+    //
+    //
+    //
 
     // println!("Stage 2.2");
     // Iddfs::new::<Stage2>(

@@ -21,7 +21,7 @@ impl PieceType {
     }
 
     /// Returns an iterator over all pieces with this type.
-    pub fn iter(self) -> impl Iterator<Item = Vec4> {
+    pub fn iter(self) -> impl Iterator<Item = Vec4> + Clone {
         Vec4::region(Vec4([-1; 4]), Vec4([1; 4]))
             .filter(move |v| v.taxicab_norm() == self.sticker_count())
     }

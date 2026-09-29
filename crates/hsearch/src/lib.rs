@@ -145,7 +145,11 @@
 //! - `M` edge orientations are indistinguishable.
 //! - Only 4 corner orientations are distinguishable (as opposed to all 12).
 //!
-//! TODO: also track edge orientation parity condition somehow?
+//! Additionally, the projection includes the total modulo-2 orientation parity
+//! for edges that belong in `M`. This is analogous to total [Reflecube] corner
+//! mirror parity.
+//!
+//! [Reflecube]: https://www.nan.ma/reflecube/
 //!
 //! ## Stages
 //!
