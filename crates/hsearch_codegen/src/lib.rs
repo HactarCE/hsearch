@@ -29,6 +29,20 @@ fn stage1() -> String {
     let target_e: u32 = collect_bits(edges().map(is_in_target));
     let target_r: u64 = collect_bits(ridges().map(is_in_target).flat_map(|b| [true, b]));
 
+    let targets_1322 = [
+        |v: Vec4| v[X] == 0 && v[W] >= 0 && v[Z] >= 0,
+        |v: Vec4| v[X] == 0 && v[W] >= 0 && v[Z] <= 0,
+        |v: Vec4| v[X] == 0 && v[W] >= 0 && v[Y] >= 0,
+        |v: Vec4| v[X] == 0 && v[W] >= 0 && v[Y] <= 0,
+    ];
+    let targets_1322_str = targets_1322
+        .map(|predicate| {
+            let t_e: u32 = collect_bits(edges().map(predicate));
+            let t_r: u64 = collect_bits(ridges().map(predicate).flat_map(|b| [false, b]));
+            format!("Self {{ e: 0x{t_e:08x}, r: 0x{t_r:012x} }}")
+        })
+        .join(", ");
+
     let e = PermutationLut::new(edges()).to_rust_code(32, 0, 1, "e");
     let ro = OrientationLut::new(ridges(), 4, xyz_ro).to_rust_code(64, 0, 2, "r");
     let rp = PermutationLut::new(ridges()).to_rust_code(64, 0, 2, "r");
@@ -40,6 +54,7 @@ fn stage1() -> String {
         impl Stage1 {{
             pub const SOLVED: Self = Self {{ e: 0x{solved_e:08x}, r: 0x{solved_r:012x} }};
             pub const TARGET: Self = Self {{ e: 0x{target_e:08x}, r: 0x{target_r:012x} }};
+            pub const TARGET_1322: [Self; 4] = [{targets_1322_str}];
 
             const GENERATED_TWISTS: TwistSet = {twist_set:?};
 

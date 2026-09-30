@@ -64,8 +64,20 @@ impl Default for Stage1 {
 }
 
 impl Stage1 {
-    pub fn is_target_solved(self) -> bool {
-        self.e & Self::TARGET.e == Self::TARGET.e && self.r & Self::TARGET.r == Self::TARGET.r
+    /// Returns whether a 1x3x2x2/1x2x3x2 block (12 pieces) is solved.
+    pub fn is_target1_solved(self) -> bool {
+        self.is_target_solved(&Self::TARGET_1322)
+    }
+
+    /// Returns whether the 1x3x3x2 block (18 pieces) is solved.
+    pub fn is_target2_solved(self) -> bool {
+        self.is_target_solved(&[Self::TARGET])
+    }
+
+    fn is_target_solved(self, target_masks: &[Self]) -> bool {
+        target_masks
+            .iter()
+            .any(|t| self.e & t.e == t.e && self.r & t.r == t.r)
     }
 }
 

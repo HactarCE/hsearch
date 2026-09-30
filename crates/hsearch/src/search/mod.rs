@@ -39,8 +39,13 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     .map(|m| untransformed_partial.transform_by(m))
     .collect_vec();
 
-    println!("Stage 1: Mid");
-    Iddfs::<Stage1, _>::new(Stage1::TWISTS, |s| s.is_target_solved(), 3..=6)
+    println!("Stage 1.1: Mid (3x2x2 block)");
+    Iddfs::<Stage1, _>::new(Stage1::TWISTS, |s| s.is_target1_solved(), 1..=2)
+        .iddfs_extend(&mut partials)?;
+    // TODO: restrict twists for next step
+
+    println!("Stage 1.2: Mid (3x3x2 block)");
+    Iddfs::<Stage1, _>::new(Stage1::TWISTS, |s| s.is_target2_solved(), 1..=6)
         .with_prune(|s, d| s1_prune.query_should_prune(s.into(), d))
         .iddfs_extend(&mut partials)?;
 
