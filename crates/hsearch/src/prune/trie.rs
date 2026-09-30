@@ -175,12 +175,12 @@ impl<S: SubsetMaskStage> TrieNode<S> {
                 for depth in 1..=max_depth {
                     let mut queue = vec![];
                     for target in targets {
-                        queue.push((
-                            target.do_twist(first_twist),
-                            1,
-                            PrevTwists::new().do_twist(first_twist).unwrap(),
-                        ));
-                        entries.insert(S::Key::from(target.do_twist(first_twist)), 1);
+                        if let Some(new_prev_twists) = PrevTwists::new().do_twist(first_twist) // always succeeds
+                            && let Some(new_state) = target.do_twist(first_twist)
+                        {
+                            queue.push((new_state, 1, new_prev_twists));
+                            entries.insert(S::Key::from(new_state), 1);
+                        }
                     }
                     if depth <= 1 {
                         continue;
@@ -188,8 +188,9 @@ impl<S: SubsetMaskStage> TrieNode<S> {
                     while let Some((state, d, prev_twists)) = queue.pop() {
                         let d = d + 1;
                         for &twist in twists {
-                            if let Some(new_prev_twists) = prev_twists.do_twist(twist) {
-                                let new_state = state.do_twist(twist);
+                            if let Some(new_prev_twists) = prev_twists.do_twist(twist)
+                                && let Some(new_state) = state.do_twist(twist)
+                            {
                                 match entries.entry(S::Key::from(new_state)) {
                                     std::collections::hash_map::Entry::Occupied(mut e) => {
                                         if *e.get() > d {

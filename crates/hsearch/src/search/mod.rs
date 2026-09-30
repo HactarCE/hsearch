@@ -213,18 +213,19 @@ impl<S: Stage, SF, PF> Iddfs<S, SF, PF> {
         }
 
         for &twist in &self.twist_subset {
-            let Some(new_prev_twists) = prev_twists.do_twist(twist) else {
-                continue;
-            };
-            solution_buffer.push(twist);
-            self.dfs(
-                state.do_twist(twist),
-                new_prev_twists,
-                remaining_depth - 1,
-                solution_buffer,
-                solutions,
-            );
-            solution_buffer.pop();
+            if let Some(new_prev_twists) = prev_twists.do_twist(twist)
+                && let Some(new_state) = state.do_twist(twist)
+            {
+                solution_buffer.push(twist);
+                self.dfs(
+                    new_state,
+                    new_prev_twists,
+                    remaining_depth - 1,
+                    solution_buffer,
+                    solutions,
+                );
+                solution_buffer.pop();
+            }
         }
     }
 }

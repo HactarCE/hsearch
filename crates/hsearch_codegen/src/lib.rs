@@ -58,6 +58,7 @@ fn stage1() -> String {
 
             const GENERATED_TWISTS: TwistSet = {twist_set:?};
 
+            #[inline(always)]
             fn generated_do_twist(self, twist: Twist) -> Self {{
                 let Self {{ e, r }} = self;
                 let e = {e};
@@ -105,6 +106,7 @@ fn stage2() -> String {
 
             const GENERATED_TWISTS: TwistSet = {twist_set:?};
 
+            #[inline(always)]
             fn generated_do_twist(self, twist: Twist) -> Self {{
                 let Self {{ re, c }} = self;
                 let re = {re};
@@ -172,6 +174,7 @@ fn stage3() -> String {
 
             const GENERATED_TWISTS: TwistSet = {twist_set:?};
 
+            #[inline(always)]
             fn generated_do_twist(self, twist: Twist) -> Self {{
                 let Self {{ r, ec }} = self;
                 let r = {r};
@@ -210,6 +213,7 @@ fn stage4() -> String {
 
             const GENERATED_TWISTS: TwistSet = {twist_set:?};
 
+            #[inline(always)]
             fn generated_do_twist(self, twist: Twist) -> Self {{
                 let Self {{ r, e, c }} = self;
                 let r = {ro};

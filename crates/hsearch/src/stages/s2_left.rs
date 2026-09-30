@@ -70,8 +70,8 @@ impl Stage2 {
 impl Stage for Stage2 {
     const TWISTS: TwistSet = Self::GENERATED_TWISTS;
 
-    fn do_twist(self, twist: Twist) -> Self {
-        self.generated_do_twist(twist)
+    fn do_twist_impl(self, twist: Twist) -> OptionStage<Self> {
+        self.generated_do_twist(twist).into()
     }
 
     fn from_state(state: SimplePuzzleSim) -> Self {

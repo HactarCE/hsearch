@@ -34,7 +34,7 @@ fn bench_do_twist(c: &mut Criterion) {
         g.bench_function(name, |b| {
             b.iter(|| {
                 let state = black_box(S::default());
-                black_box(twist_sequence.iter().copied().fold(state, S::do_twist))
+                black_box(twist_sequence.iter().copied().try_fold(state, S::do_twist))
             });
         });
     }
@@ -66,7 +66,8 @@ fn bench_pruning_trie(c: &mut Criterion) {
                         .unwrap()
                         .copied()
                         .take(distance_to_solved)
-                        .fold(S::default(), Stage::do_twist)
+                        .try_fold(S::default(), Stage::do_twist)
+                        .unwrap()
                 })
                 .collect_vec();
             let mut input_states_iter = input_states.iter().copied().cycle();

@@ -83,8 +83,9 @@ impl PruningMap {
         while let Some((state, depth)) = queue.pop_front() {
             let new_depth = depth + 1;
             for &twist in &twists {
-                let new_state = state.do_twist(twist);
-                if let std::collections::hash_map::Entry::Vacant(e) = map.entry(new_state.key()) {
+                if let Some(new_state) = state.do_twist(twist)
+                    && let std::collections::hash_map::Entry::Vacant(e) = map.entry(new_state.key())
+                {
                     e.insert(new_depth);
                     if new_depth < max_depth {
                         queue.push_back((new_state, new_depth));
@@ -166,11 +167,11 @@ mod tests {
         let pruning_map = PruningMap::new::<Stage4>(2);
         let mut state = Stage4::default();
         assert_eq!(Some(&0), pruning_map.map.get(&state.key()));
-        state = state.do_twists(parse_twists("FR"));
+        state = state.do_twists(parse_twists("FR")).unwrap();
         assert_eq!(Some(&1), pruning_map.map.get(&state.key()));
-        state = state.do_twists(parse_twists("OF"));
+        state = state.do_twists(parse_twists("OF")).unwrap();
         assert_eq!(Some(&2), pruning_map.map.get(&state.key()));
-        state = state.do_twists(parse_twists("FR"));
+        state = state.do_twists(parse_twists("FR")).unwrap();
         assert_eq!(Some(&3), pruning_map.map.get(&state.key()));
     }
 }

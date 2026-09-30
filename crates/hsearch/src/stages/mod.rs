@@ -15,13 +15,22 @@ pub trait Stage: 'static + Send + Sync + std::fmt::Debug + Copy + Default + Eq {
     const TWISTS: TwistSet;
 
     /// Applies a twist and returns the new state.
+    ///
+    /// Prefer calling [`Self::do_twist()`].
     #[must_use]
-    fn do_twist(self, twist: Twist) -> Self;
+    fn do_twist_impl(self, twist: Twist) -> OptionStage<Self>;
+
+    /// Applies a twist and returns the new state.
+    #[must_use]
+    #[inline(always)]
+    fn do_twist(self, twist: Twist) -> Option<Self> {
+        self.do_twist_impl(twist).to_option()
+    }
 
     /// Applies multiple twists and returns the new state.
     #[must_use]
-    fn do_twists(self, twists: impl IntoIterator<Item = Twist>) -> Self {
-        twists.into_iter().fold(self, Self::do_twist)
+    fn do_twists(self, twists: impl IntoIterator<Item = Twist>) -> Option<Self> {
+        twists.into_iter().try_fold(self, Self::do_twist)
     }
 
     /// Returns a state with a given scramble.
@@ -46,6 +55,50 @@ pub trait Stage: 'static + Send + Sync + std::fmt::Debug + Copy + Default + Eq {
     ///
     /// Panics if the puzzle state does not satisfy the invariants of the stage.
     fn from_state(state: SimplePuzzleSim) -> Self;
+
+    /// Returns whether the state is valid.
+    ///
+    /// This can be used to make `do_twist()` falliable without incurring the
+    /// register overheard of returning `Option<Self>`.
+    ///
+    /// The default implementation returns `true` unconditionally.
+    fn is_valid(self) -> bool {
+        true
+    }
+}
+
+/// Memory-optimized `Option<S>` using `Stage::is_valid()`.
+#[repr(transparent)]
+pub struct OptionStage<S>(S);
+
+impl<S: Stage> OptionStage<S> {
+    /// Constructs an [`OptionStage`] from a [`Stage`].
+    pub fn new(state: S) -> Self {
+        Self(state)
+    }
+
+    /// Converts the [`OptionStage<S>`] to an [`Option<S>`].
+    ///
+    /// As long as the [`Option`] is consumed immediately, this incurs little to
+    /// no performance overheard since it can be inlined.
+    #[inline(always)]
+    pub fn to_option(self) -> Option<S> {
+        self.0.is_valid().then_some(self.0)
+    }
+
+    /// Panics if the state is not valid and returns the contained state.
+    ///
+    /// Analogous to [`Option::unwrap()`].
+    pub fn unwrap(self) -> S {
+        assert!(self.0.is_valid());
+        self.0
+    }
+}
+
+impl<S: Stage> From<S> for OptionStage<S> {
+    fn from(value: S) -> Self {
+        Self(value)
+    }
 }
 
 pub trait StageKeyU128: Stage {
@@ -101,7 +154,7 @@ mod tests {
             .collect_vec();
         let both = std::iter::chain(&twists1, &twists2).copied().collect_vec();
         assert_eq!(
-            S::with_setup(&twists1).do_twists(twists2),
+            S::with_setup(&twists1).do_twists(twists2).unwrap(),
             S::with_setup(&both),
         );
     }
