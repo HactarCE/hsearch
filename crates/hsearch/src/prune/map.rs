@@ -165,13 +165,13 @@ mod tests {
     #[test]
     fn test_stage4_pruning_map() {
         let pruning_map = PruningMap::new::<Stage4>(2);
-        let mut state = Stage4::default();
+        let mut state = Stage4::default().do_twists(parse_twists("UF")).unwrap();
         assert_eq!(Some(&0), pruning_map.map.get(&state.key()));
-        state = state.do_twists(parse_twists("FR")).unwrap();
+        state = state.do_twists(parse_twists("FR2")).unwrap();
         assert_eq!(Some(&1), pruning_map.map.get(&state.key()));
-        state = state.do_twists(parse_twists("OF")).unwrap();
+        state = state.do_twists(parse_twists("RI")).unwrap();
         assert_eq!(Some(&2), pruning_map.map.get(&state.key()));
-        state = state.do_twists(parse_twists("FR")).unwrap();
-        assert_eq!(Some(&3), pruning_map.map.get(&state.key()));
+        state = state.do_twists(parse_twists("UO2")).unwrap();
+        assert_eq!(None, pruning_map.map.get(&state.key()));
     }
 }

@@ -21,6 +21,12 @@ impl Group {
         Group::new(vec![Mat4::rot(X, Y), Mat4::rot(X, Z), Mat4::rot(X, W)])
     }
 
+    /// Constructs the group of hypercube rotations that map the X axis to
+    /// itself.
+    pub fn domino_rotations() -> Group {
+        Group::new(vec![Mat4::rot180(X, Y), Mat4::rot(Y, Z), Mat4::rot(Y, W)])
+    }
+
     /// Returns all elements of the symmetry group.
     pub fn elems(&self) -> Vec<Mat4> {
         self.orbit_with(vec![IDENT], |g, &m| g * m, |&m| m)
@@ -49,5 +55,16 @@ impl Group {
             unprocessed_index += 1;
         }
         ret
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_group_orders() {
+        assert_eq!(Group::hypercube_rotations().elems().len(), 8 * 6 * 4);
+        assert_eq!(Group::domino_rotations().elems().len(), 6 * 4 * 2);
     }
 }

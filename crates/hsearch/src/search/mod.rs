@@ -74,25 +74,23 @@ pub fn solve(scramble: Vec<Twist>) -> Result<(), NoSolution> {
     cleanup_and_display_solutions("stage 4.1", &mut partials, false);
 
     println!("Stage 4.2: Pre-domino (2x2x3)");
-    Iddfs::<Stage4, _>::new(Stage4::TWISTS, |s| s.is_223_target_solved(), 1..=4)
-        .iddfs_extend(&mut partials)?;
+    Iddfs::<Stage4WithBlock, _>::new(
+        Stage4WithBlock::TWISTS,
+        |s| s.inner().is_223_target_solved(),
+        1..=4,
+    )
+    .iddfs_extend(&mut partials)?;
     cleanup_and_display_solutions("stage 4.2", &mut partials, false);
 
-    println!("Stage 4.3: Pre-domino (7 blocks)");
-    Iddfs::<Stage4, _>::new(Stage4::TWISTS, |s| s.is_311_target_solved(7), 1..=4)
-        .iddfs_extend(&mut partials)?;
-    cleanup_and_display_solutions("stage 4.3", &mut partials, false);
-
-    println!("Stage 4.4: Pre-domino (8 blocks)");
-    Iddfs::<Stage4, _>::new(Stage4::TWISTS, |s| s.is_311_target_solved(8), 1..=4)
-        .iddfs_extend(&mut partials)?;
-    cleanup_and_display_solutions("stage 4.4", &mut partials, false);
-
-    println!("Stage 4: Pre-domino");
+    println!("Stage 4.3: Pre-domino");
     let target = Stage4::target();
-    Iddfs::<Stage4, _>::new(Stage4::TWISTS, |s| s.is_target_solved(&target), 1..=7)
-        .with_prune(|s, d| s4_prune.query_should_prune(s.key(), d))
-        .iddfs_extend(&mut partials)?;
+    Iddfs::<Stage4WithBlock, _>::new(
+        Stage4WithBlock::TWISTS,
+        |s| s.inner().is_target_solved(&target),
+        1..=8,
+    )
+    .with_prune(|s, d| s4_prune.query_should_prune(s.inner().key(), d))
+    .iddfs_extend(&mut partials)?;
     cleanup_and_display_solutions("stage 4", &mut partials, true);
 
     Ok(())

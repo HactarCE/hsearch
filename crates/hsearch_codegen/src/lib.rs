@@ -215,14 +215,14 @@ fn stage4() -> String {
 
             #[inline(always)]
             fn generated_do_twist(self, twist: Twist) -> Self {{
-                let Self {{ r, e, c }} = self;
+                let Self {{ r, e, c, .. }} = self;
                 let r = {ro};
                 let r = {rp};
                 let e = {eo};
                 let e = {ep};
                 let c = {co};
                 let c = {cp};
-                Self {{ r, e, c }}
+                Self {{ r, e, c, ..self }}
             }}
         }}
         "

@@ -40,7 +40,7 @@ pub struct Stage4 {
     /// - `00` = belongs in `M`
     /// - `01` = belongs in `R`/`L`, orientation 1
     /// - `10` = belongs in `R`/`L`, orientation 2
-    r: u64, // u48
+    pub r: u64, // u48
 
     /// For each edge location, 2 bits indicating one of the following cases:
     ///
@@ -48,7 +48,7 @@ pub struct Stage4 {
     /// - `01` = belongs in `R`/`L`, bad orientation 1
     /// - `10` = belongs in `R`/`L`, bad orientation 2
     /// - `00` = belongs in `M` slice, any orientation
-    e: u64, // u64
+    pub e: u64, // u64
 
     /// For each corner location, 2 bits indicating the axis containing its
     /// `R`/`L` sticker:
@@ -57,7 +57,7 @@ pub struct Stage4 {
     /// - `01` = Y
     /// - `10` = Z
     /// - `11` = W
-    c: u32, // u32
+    pub c: u32, // u32
 }
 
 impl Default for Stage4 {
@@ -79,6 +79,8 @@ static TARGET_STATES: LazyLock<[Stage4; 6]> = LazyLock::new(|| {
         Stage4::with_setup(&parse_twists("OF IF")),
     ]
 });
+/// Axis of the single move for each state in [`TARGET_STATES`].
+const TARGET_STATE_AXES: [Axis; 6] = [Y, Y, Z, Z, W, W];
 
 /// Deduplicates target blocks and associates them to a mask of target states
 /// (indices into `TARGET_STATES`).
@@ -95,7 +97,68 @@ fn consolidate_target_blocks(target_blocks: [Vec<u128>; 6]) -> (Vec<u128>, Vec<u
     )
 }
 
+#[derive(Debug, Default)]
+struct TargetBlockList {
+    by_stage: [Vec<(u128, Block)>; 6],
+}
+
+impl TargetBlockList {
+    fn from_seeds(seed_blocks: Vec<Block>) -> Self {
+        let expanded_block_list = Group::domino_rotations()
+            .orbit_with(seed_blocks, |rot, b| b.transform_by(rot), |b| *b)
+            .into_iter()
+            .sorted() // canonicalize for determinism
+            .dedup() // defensive; shouldn't be necessary
+            .collect_vec();
+        let mut ret = Self::default();
+        for (i, axis) in TARGET_STATE_AXES.into_iter().enumerate() {
+            for &block in &expanded_block_list {
+                if !block.intersects_slice_layer(axis) {
+                    ret.by_stage[i].push((Stage4::packed_piece_mask_for_block(block), block));
+                }
+            }
+        }
+        ret
+    }
+}
+
 impl Stage4 {
+    fn find_solved_block(self, target_block_list: &TargetBlockList) -> Option<Block> {
+        for (target_state, possible_block_masks) in
+            TARGET_STATES.iter().zip(&target_block_list.by_stage)
+        {
+            let similar_pieces = self.similar_piece_mask(*target_state);
+            for &(mask, block) in possible_block_masks {
+                if similar_pieces & mask == mask {
+                    return Some(block);
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Returns the first solved 2x2x3 block on the 1-move-from-domino grip.
+    pub fn find_solved_223_block(self) -> Option<Block> {
+        static BLOCKS: LazyLock<TargetBlockList> = LazyLock::new(|| {
+            TargetBlockList::from_seeds(vec![
+                Block::new([-1..=1, 0..=1, 0..=1, 1..=1].map(|r| r.into())), // 3 along X
+                Block::new([0..=1, -1..=1, 0..=1, 1..=1].map(|r| r.into())), // 2 along X
+            ])
+        });
+        self.find_solved_block(&*BLOCKS)
+    }
+
+    /// Returns the first solved 2x2x2 block on the 1-move-from-domino grip.
+    pub fn find_solved_222_block(self) -> Option<Block> {
+        static BLOCKS: LazyLock<TargetBlockList> = LazyLock::new(|| {
+            TargetBlockList::from_seeds(vec![Block::new(
+                [0..=1, 0..=1, 0..=1, 1..=1].map(|r| r.into()),
+            )])
+        });
+        self.find_solved_block(&*BLOCKS)
+    }
+
     pub fn is_222_target_solved(self) -> bool {
         /// Returns a list of 1x2x2x2 blocks, given an axis order.
         ///
@@ -235,6 +298,10 @@ impl Stage4 {
         let even_bits = ((r as u128) << 32) | c as u128;
         let odd_bits = (e << 1) as u128;
         (even_bits | odd_bits) ^ 0x5555_ffff_ffff_ffff_ffff
+    }
+
+    fn packed_piece_mask_for_block(block: Block) -> u128 {
+        Self::packed_piece_mask(|v| block.contains(v))
     }
 
     fn packed_piece_mask(f: impl Fn(Vec4) -> bool) -> u128 {

@@ -72,6 +72,7 @@ impl Mat4 {
 
     /// Returns a column of the matrix, represented as a facet that indicates
     /// the position of the nonzero entry and its sign (±1).
+    #[inline(always)]
     pub const fn col(self, column: Axis) -> Facet {
         Facet::from_u8(((self.0 >> (column as u8 * 3)) & 0x7) as u8)
     }

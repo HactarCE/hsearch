@@ -4,15 +4,27 @@ mod s1_mid;
 mod s2_left;
 mod s3_count;
 mod s4_predom;
+mod s4_predom_with_block;
 
 pub use s1_mid::Stage1;
 pub use s2_left::Stage2;
 pub use s3_count::Stage3;
 pub use s4_predom::Stage4;
+pub use s4_predom_with_block::Stage4WithBlock;
 
 pub trait Stage: 'static + Send + Sync + std::fmt::Debug + Copy + Default + Eq {
     /// Twist set that the stage is capable of representing.
     const TWISTS: TwistSet;
+
+    /// Returns whether the state is valid.
+    ///
+    /// This can be used to make `do_twist()` falliable without incurring the
+    /// register overheard of returning `Option<Self>`.
+    ///
+    /// The default implementation returns `true` unconditionally.
+    fn is_valid(self) -> bool {
+        true
+    }
 
     /// Applies a twist and returns the new state.
     ///
@@ -55,16 +67,6 @@ pub trait Stage: 'static + Send + Sync + std::fmt::Debug + Copy + Default + Eq {
     ///
     /// Panics if the puzzle state does not satisfy the invariants of the stage.
     fn from_state(state: SimplePuzzleSim) -> Self;
-
-    /// Returns whether the state is valid.
-    ///
-    /// This can be used to make `do_twist()` falliable without incurring the
-    /// register overheard of returning `Option<Self>`.
-    ///
-    /// The default implementation returns `true` unconditionally.
-    fn is_valid(self) -> bool {
-        true
-    }
 }
 
 /// Memory-optimized `Option<S>` using `Stage::is_valid()`.

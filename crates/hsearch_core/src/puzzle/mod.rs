@@ -1,3 +1,4 @@
+mod block;
 mod piece_type;
 mod sim;
 mod twist;
@@ -5,6 +6,7 @@ mod twist_data;
 mod twist_names;
 mod twist_set;
 
+pub use block::Block;
 pub use piece_type::PieceType;
 pub use sim::SimplePuzzleSim;
 pub use twist::Twist;
